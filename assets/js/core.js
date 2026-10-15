@@ -613,6 +613,7 @@ const Site = {
   onRedraw: [],           // redraw the page's pieces (after measuring, or a lighter-mode switch)
   onHoverFrame: [],       // extra per-frame hover work; return true while still moving
   onPointer: [],          // the mouse moved or the screen was tapped
+  onTap: [],              // touchscreens: a tap (not a swipe) ended, with its pointer event
   onLite: [],             // lighter mode was switched on or off
   jump: null,             // (hash) → true if this page handles a link to that #scene itself
   isGliding: () => false, // is an in-page jump still moving? (links stay dissolved until it stops)
@@ -832,7 +833,7 @@ const background = (() => {
     drops.forEach((d) => { d.light = 0; d.px = 0; d.py = 0; d.swell = 0; });
 
     // 1. The soft patch around the mouse: full strength in the middle,
-    //    fading out toward its edge (like the old CSS circle)
+    //    fading out toward its edge
     if (patternFade > 0) {
       const PR = PATTERN.radius;
       eachDropNear(pointer.px, pointer.py, PR, (i, j, x, y) => {
@@ -906,6 +907,22 @@ const background = (() => {
     ctx.fillRect(0, 0, w, h);
     drawSweep();
     drawDrops(now);
+    showFlat();
+  }
+
+  // Most of the time the canvas is just one flat color (no sweep moving, no
+  // pattern, no ripples). Then it's hidden and the page's own background
+  // shows that color instead: one less full-screen layer for the browser to
+  // keep up while scrolling, which matters on phones.
+  let flat = null;
+  function showFlat() {
+    const color = drops.size || ripples.length ? null
+      : base === 'cream' || sweep >= 1 ? COLOR.cream
+      : sweep <= 0 ? COLOR[base] : null;
+    if (color === flat) return;
+    flat = color;
+    if (color) document.body.style.backgroundColor = color;
+    canvas.style.visibility = color ? 'hidden' : '';
   }
 
   const patternTarget = () => (pointer.active && hasMouse && !reduceMotion ? 1 : 0);
@@ -955,9 +972,10 @@ const background = (() => {
     wake();
   }
 
+  const makesRipple = (e) => !reduceMotion && !e.target.closest('a, button, .hero__logo');  // links make no ripple; the big logo makes its own
+
   window.addEventListener('pointerdown', (e) => {
-    if (reduceMotion || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    if (e.target.closest('a, button, .hero__logo')) return;  // links make no ripple; the big logo makes its own
+    if (e.pointerType === 'touch' || (e.pointerType === 'mouse' && e.button !== 0) || !makesRipple(e)) return;
     pressed = true;
     lastX = lastY = null;
     root.classList.add('is-drawing');           // no text highlighting while dragging
@@ -965,6 +983,13 @@ const background = (() => {
   }, { passive: true });
 
   window.addEventListener('pointermove', (e) => { if (pressed) addRipple(e); }, { passive: true });
+
+  // Touchscreens: only a tap makes a ripple, not a swipe (onTap, section 9)
+  Site.onTap.push((e) => {
+    if (!makesRipple(e)) return;
+    lastX = lastY = null;
+    addRipple(e);
+  });
 
   const release = () => { pressed = false; root.classList.remove('is-drawing'); };
   window.addEventListener('pointerup', release);
@@ -1328,9 +1353,21 @@ root.addEventListener('mouseleave', () => {
   updateGlass();
 });
 
-// Touchscreens: a tap scatters the pieces around that spot, then they settle back
+// Touchscreens: a tap scatters the pieces around that spot, then they settle
+// back (and the background ripples, section 7). Only real taps count, not
+// swipes: the finger must lift close to where it went down, and a swipe that
+// starts scrolling cancels the pointer anyway (reacting to every swipe made
+// scrolling slower on phones).
+let touchDown = null;  // where the finger went down
 window.addEventListener('pointerdown', (e) => {
-  if (e.pointerType !== 'touch') return;
+  if (e.pointerType === 'touch') touchDown = { x: e.clientX, y: e.clientY };
+}, { passive: true });
+window.addEventListener('pointercancel', () => { touchDown = null; });
+window.addEventListener('pointerup', (e) => {
+  if (e.pointerType !== 'touch' || !touchDown) return;
+  const moved = Math.hypot(e.clientX - touchDown.x, e.clientY - touchDown.y);
+  touchDown = null;
+  if (moved > 10) return;  // a swipe, not a tap
   pointer.x = pointer.sx = e.clientX;
   pointer.y = pointer.sy = e.clientY;
   pointer.active = true;
@@ -1338,6 +1375,7 @@ window.addEventListener('pointerdown', (e) => {
   wakeHover();
   clearTimeout(pointer.tap);
   pointer.tap = setTimeout(() => { pointer.active = false; }, 600);
+  Site.onTap.forEach((fn) => fn(e));
 }, { passive: true });
 
 // On scrolling pages the glass has to follow the text as it scrolls

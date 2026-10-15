@@ -287,6 +287,10 @@ ul { padding: 0; list-style: none; }
   position: fixed;
   inset: 0;
   z-index: 1;
+  /* Letters blown off screen by the wind aren't drawn past the edges
+     (keeps the area the browser repaints to the size of the screen) */
+  overflow: hidden;
+  overflow: clip;
 }
 .js .scene {
   position: absolute;
