@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<!--
+  =========================================================================
+  Angel Studio — about page
+  =========================================================================
+  DEVELOPER NOTES
+  - Same look and effects as the home page (shared assets/js/core.js), plus
+    assets/js/about.js for this page. Unlike the home page, this page
+    scrolls normally: each block (class="reveal") flows in on the wind the
+    first time it comes into view.
+  - data-wind / data-wind="letters" work the same as on the home page.
+  - Placeholders: everything in [square brackets], the dashed boxes
+    (class="ph"), and the social links (#). Replace them with real content.
+  - Links back to the home page carry data-transition, the color of where
+    they lead: the logo → burgundy (the top of the home page), Work and
+    Contact → cream. Links name the file (../index.html) so they also work
+    when the files are opened straight from your computer.
+  =========================================================================
+-->
+<html lang="en" data-bg="cream">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About — Angel Studio</title>
+  <meta name="description" content="About Angel Studio: graphic designer of logos, posters, tickets and brand identity.">
+
+  <!-- JavaScript is on; the page starts hidden for one frame so nothing flashes,
+       and is already "scrolled" (the small logo and dark menu show on cream) -->
+  <script>
+    document.documentElement.classList.add('js', 'is-entering', 'is-scrolled', 'is-light');
+    // Safety net: if a script fails to load, never leave the page hidden
+    setTimeout(function () { document.documentElement.classList.remove('is-entering', 'is-arriving-cream'); }, 2500);
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@500;700&family=Geist+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <script src="../assets/js/core.js" defer></script>
+  <script src="../assets/js/about.js" defer></script>
+</head>
+<body class="page-about">
+
+  <!-- ===== BACKGROUND LAYERS ===== -->
+  <canvas class="bg" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <path id="drop" d="M0,-48 C12,-30 30,-12 30,8 A30,30 0 1,1 -30,8 C-30,-12 -12,-30 0,-48 Z"/>
+    </defs>
+  </svg>
+
+  <!-- ===== TOP BAR (same as the home page) ===== -->
+  <header class="site-header">
+    <a class="site-header__logo" href="../index.html" data-transition="burgundy" aria-label="Angel Studio, home">
+      <svg class="mark" viewBox="-100 -100 200 200" aria-hidden="true">
+        <g class="piece"><use href="#drop" transform="translate(-50,38)"/></g>
+        <g class="piece"><use href="#drop" transform="rotate(120) translate(-50,38)"/></g>
+        <g class="piece"><use href="#drop" transform="rotate(240) translate(-50,38)"/></g>
+      </svg>
+      <span class="wordmark" aria-hidden="true">angel studio</span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="../index.html#work" data-transition="cream">Work</a>
+      <a href="#top" aria-current="page">About</a>
+      <a href="../index.html#contact" data-transition="cream">Contact</a>
+    </nav>
+  </header>
+
+  <main class="about" id="top">
+
+    <!-- Intro: name, portrait, short introduction -->
+    <section class="about-intro reveal" aria-labelledby="about-title">
+      <p class="label" data-wind>(About)</p>
+      <h1 class="about-intro__name" id="about-title" data-wind="letters">Ange Jose Perez Vazquez</h1>
+
+      <div class="about-intro__grid">
+        <div class="ph ph--portrait"><span class="label">Portrait · 4:5</span></div>
+        <div class="about-intro__text">
+          <p class="about-lead" data-wind>[A short introduction in one or two sentences: who you are, what you design, and what you care about.]</p>
+          <p class="label" data-wind>Graphic designer<br>Based in [City]</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- (01) Bio -->
+    <section class="about-row reveal" aria-labelledby="bio-title">
+      <h2 class="label about-row__label" id="bio-title" data-wind>(01) Bio</h2>
+      <div class="about-row__body">
+        <p class="about-text" data-wind>[Bio paragraph one. Where you started, how you got into design, and what kind of work you love making. Two to four sentences works well here.]</p>
+        <p class="about-text" data-wind>[Bio paragraph two. How you work with clients, what they can expect, or something personal that shapes your style.]</p>
+      </div>
+    </section>
+
+    <!-- (02) Services -->
+    <section class="about-row reveal" aria-labelledby="services-title">
+      <h2 class="label about-row__label" id="services-title" data-wind>(02) Services</h2>
+      <ul class="about-row__body about-list">
+        <li data-wind="letters">Logos</li>
+        <li data-wind="letters">Posters</li>
+        <li data-wind="letters">Tickets</li>
+        <li data-wind="letters">Brand identity</li>
+        <li class="about-list__soon" data-wind="letters">Media</li>
+      </ul>
+    </section>
+
+    <!-- (03) Tools -->
+    <section class="about-row reveal" aria-labelledby="tools-title">
+      <h2 class="label about-row__label" id="tools-title" data-wind>(03) Tools</h2>
+      <ul class="about-row__body about-tags">
+        <li class="label" data-wind>[Tool one]</li>
+        <li class="label" data-wind>[Tool two]</li>
+        <li class="label" data-wind>[Tool three]</li>
+        <li class="label" data-wind>[Tool four]</li>
+        <li class="label" data-wind>[Tool five]</li>
+      </ul>
+    </section>
+
+    <!-- (04) Experience: one row per role -->
+    <section class="about-row reveal" aria-labelledby="exp-title">
+      <h2 class="label about-row__label" id="exp-title" data-wind>(04) Experience</h2>
+      <ul class="about-row__body about-exp">
+        <li><span class="label" data-wind>[Year – Year]</span><span data-wind>[Role]</span><span class="label" data-wind>[Studio / Client]</span></li>
+        <li><span class="label" data-wind>[Year – Year]</span><span data-wind>[Role]</span><span class="label" data-wind>[Studio / Client]</span></li>
+        <li><span class="label" data-wind>[Year – Year]</span><span data-wind>[Role]</span><span class="label" data-wind>[Studio / Client]</span></li>
+      </ul>
+    </section>
+
+    <!-- Studio / process images -->
+    <section class="about-gallery reveal" aria-label="Studio images">
+      <div class="ph"><span class="label">Image · process</span></div>
+      <div class="ph"><span class="label">Image · studio</span></div>
+      <div class="ph"><span class="label">Image · detail</span></div>
+    </section>
+
+    <!-- Contact -->
+    <section class="about-cta reveal" aria-labelledby="cta-title">
+      <p class="label" data-wind>(05) Contact</p>
+      <h2 class="about-cta__title" id="cta-title" data-wind="letters">Let's work together.</h2>
+      <a class="contact__email" href="mailto:angelperezstudio@gmail.com" data-wind>angelperezstudio@gmail.com</a>
+    </section>
+
+    <footer class="about-footer contact__bottom label reveal">
+      <span data-wind>© 2026 Angel Studio</span>
+      <span class="contact__links" data-wind>
+        <a href="#">Instagram</a>
+        <a href="#">Behance</a>
+        <a href="#">LinkedIn</a>
+      </span>
+      <a href="#top" data-wind>Back to top ↑</a>
+    </footer>
+
+  </main>
+
+</body>
+</html>

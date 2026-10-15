@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<!--
+  =========================================================================
+  Angel Studio — home page
+  =========================================================================
+  DEVELOPER NOTES
+  - Content lives here; looks live in assets/css/style.css; all movement
+    lives in assets/js/core.js (shared by every page) + assets/js/home.js
+    (this page only). Each file starts with its own notes.
+  - Anything with a data-wind attribute is animated: the scripts split its text
+    into letters that flow in and out with the scroll, react to hover, and
+    get a soft glass blur behind them.
+      data-wind           → labels; line breaks, links and spans inside are kept
+      data-wind="letters" → plain text titles, split letter by letter
+    To add new animated text, just give it data-wind.
+  - The three <section class="scene"> blocks are the scroll scenes. With
+    JavaScript on, they sit on top of each other on one fixed screen and
+    home.js fades them in and out. Without JavaScript they're a normal page.
+  - Links to #top / #work / #contact glide to that scene (home.js, section 5).
+  - Links with data-transition="cream" / "burgundy" open another page with
+    the color sweep from the top left (core.js, section 8). Use the color of
+    the page you're going to.
+  - Links between pages point at the file itself (about/index.html, not just
+    about/), so they work both on GitHub Pages and when you open the files
+    straight from your computer.
+  - Placeholders still to fill in: [City], social links (#), and the work
+    rows (#) until their category pages exist (work/logos/index.html…).
+  =========================================================================
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Angel Studio — Graphic Design</title>
+  <meta name="description" content="Angel Studio: logos, posters, tickets and brand identity design.">
+
+  <!-- Tells the CSS that JavaScript is running (used for the scroll scenes) -->
+  <script>
+    document.documentElement.classList.add('js');
+    // Arriving at #work / #contact (e.g. from the About page): start on cream,
+    // so there's no flash of burgundy before the scripts take over
+    if (location.hash === '#work' || location.hash === '#contact') document.documentElement.classList.add('is-arriving-cream', 'is-entering');
+    // Safety net: if a script fails to load, never leave the page hidden
+    setTimeout(function () { document.documentElement.classList.remove('is-entering', 'is-arriving-cream'); }, 2500);
+  </script>
+
+  <!-- Fonts (placeholders until we pick final ones) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@500;700&family=Geist+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="assets/js/core.js" defer></script>
+  <script src="assets/js/home.js" defer></script>
+</head>
+<body>
+
+  <!-- ===== BACKGROUND LAYERS (behind everything) ===== -->
+  <canvas class="bg" aria-hidden="true"></canvas>       <!-- burgundy base, cream sweep, drop pattern + ripples (drawn by core.js) -->
+  <div class="grain" aria-hidden="true"></div>          <!-- film grain texture -->
+
+  <!-- Reusable drop shape for the logo mark (placeholder until the real SVG export).
+       The same path is used in core.js for the background pattern ("dropShape"),
+       so if you change it here, change it there too. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <path id="drop" d="M0,-48 C12,-30 30,-12 30,8 A30,30 0 1,1 -30,8 C-30,-12 -12,-30 0,-48 Z"/>
+    </defs>
+  </svg>
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="site-header">
+    <a class="site-header__logo" href="#top" aria-label="Angel Studio, back to top">
+      <svg class="mark" viewBox="-100 -100 200 200" aria-hidden="true">
+        <g class="piece"><use href="#drop" transform="translate(-50,38)"/></g>
+        <g class="piece"><use href="#drop" transform="rotate(120) translate(-50,38)"/></g>
+        <g class="piece"><use href="#drop" transform="rotate(240) translate(-50,38)"/></g>
+      </svg>
+      <span class="wordmark" aria-hidden="true">angel studio</span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="#work">Work</a>
+      <a href="about/index.html" data-transition="cream">About</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+
+  <!-- ===== SCENES =====
+       With JavaScript on, all scenes sit on top of each other in one fixed
+       screen, and scrolling fades them in and out in place (see home.js). -->
+  <main class="stage" id="top" tabindex="-1">
+
+    <!-- Scene 1: logo + corner labels -->
+    <section class="scene scene--hero" aria-label="Intro" tabindex="-1">
+      <h1 class="sr-only">Angel Studio, graphic designer</h1>
+      <div class="hero__logo" role="link" tabindex="0" aria-label="Angel Studio: see the work">
+        <svg class="mark" viewBox="-100 -100 200 200" aria-hidden="true">
+          <g class="piece"><use href="#drop" transform="translate(-50,38)"/></g>
+          <g class="piece"><use href="#drop" transform="rotate(120) translate(-50,38)"/></g>
+          <g class="piece"><use href="#drop" transform="rotate(240) translate(-50,38)"/></g>
+        </svg>
+        <p class="wordmark" aria-hidden="true">angel studio</p>
+      </div>
+
+      <p class="label hero__corner hero__corner--left" data-wind>Graphic designer<br>Logos · Posters · Tickets · Identity</p>
+      <p class="label hero__corner hero__corner--right" data-wind>Based in [City]<br><span id="local-time">--:--</span> local time</p>
+      <a class="label hero__scroll" href="#work" data-wind>Scroll ↓</a>
+    </section>
+
+    <!-- Scene 2: work -->
+    <section class="scene scene--work" id="work" aria-labelledby="work-title" tabindex="-1">
+      <div class="section-head" data-wind>
+        <h2 class="label" id="work-title">(01) Selected work</h2>
+        <p class="label">2026</p>
+      </div>
+
+      <ul class="work-list">
+        <li>
+          <!-- href="#" until the category page exists; then: work/logos/index.html -->
+          <a class="work-item" href="#">
+            <span class="work-item__num label" data-wind>01</span>
+            <span class="work-item__title" data-wind="letters">Logos</span>
+            <span class="work-item__info label" data-wind>[0] projects</span>
+            <span class="work-item__arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+        <li>
+          <!-- later: work/posters/index.html -->
+          <a class="work-item" href="#">
+            <span class="work-item__num label" data-wind>02</span>
+            <span class="work-item__title" data-wind="letters">Posters &amp; Tickets</span>
+            <span class="work-item__info label" data-wind>[0] projects</span>
+            <span class="work-item__arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+        <li>
+          <!-- later: work/branding/index.html -->
+          <a class="work-item" href="#">
+            <span class="work-item__num label" data-wind>03</span>
+            <span class="work-item__title" data-wind="letters">Brand Identity</span>
+            <span class="work-item__info label" data-wind>[0] projects</span>
+            <span class="work-item__arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+        <li>
+          <!-- later: work/media/index.html -->
+          <a class="work-item work-item--soon" href="#">
+            <span class="work-item__num label" data-wind>04</span>
+            <span class="work-item__title" data-wind="letters">Media</span>
+            <span class="work-item__info label" data-wind>Coming soon</span>
+            <span class="work-item__arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Scene 3: contact -->
+    <section class="scene scene--contact" id="contact" aria-labelledby="contact-title" tabindex="-1">
+      <p class="label" data-wind>(02) Contact</p>
+      <h2 class="contact__title" id="contact-title" data-wind="letters">Let's work together.</h2>
+      <a class="contact__email" href="mailto:angelperezstudio@gmail.com" data-wind>angelperezstudio@gmail.com</a>
+
+      <div class="contact__bottom label">
+        <span data-wind>© 2026 Angel Studio</span>
+        <span class="contact__links" data-wind>
+          <a href="#">Instagram</a>
+          <a href="#">Behance</a>
+          <a href="#">LinkedIn</a>
+        </span>
+        <a href="#top" data-wind>Back to top ↑</a>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Invisible tall block that gives the page its scroll length (set by home.js) -->
+  <div class="scroll-space" aria-hidden="true"></div>
+
+</body>
+</html>
