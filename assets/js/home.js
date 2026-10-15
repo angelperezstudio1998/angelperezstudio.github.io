@@ -44,7 +44,7 @@ const HEADER = {
 
 // The big logo's resting motion: each drop gently sways like it's in a breeze
 const FLOW = {
-  sway: 5,         // how far each drop moves (logo units; the mark is 200 wide)
+  sway: 3,         // how far each drop moves (logo units; the three drops together are 125 wide)
   tilt: 5,         // how much each drop rocks (degrees)
   breathe: 0.025,  // how much each drop swells and shrinks (0.025 = 2.5%)
   speed: 1,        // overall tempo (bigger = faster)
@@ -53,8 +53,8 @@ const FLOW = {
   stretch: 0.07,   // stretch when moving fastest (0.07 = 7% longer)
   wobble: 0.025,   // slow wobble of the shape (0.025 = 2.5%)
   // A soft blur on the side each drop is moving toward, so it blurs in and out
-  trailBlur: 1.6,  // softness of that blur (logo units)
-  trailReach: 0.9, // how far ahead of the drop it reaches when moving fastest (logo units)
+  trailBlur: 1,    // softness of that blur (logo units)
+  trailReach: 0.56, // how far ahead of the drop it reaches when moving fastest (logo units)
   trailStrength: 0.5, // how visible it is (0 to 1)
 };
 
@@ -112,7 +112,6 @@ const heroScene = document.querySelector('.scene--hero');
 const workScene = document.querySelector('.scene--work');
 const contactScene = document.querySelector('.scene--contact');
 const heroLogo = document.querySelector('.hero__logo');
-heroLogo.querySelectorAll('.wordmark').forEach(splitLetters);  // (the small logo's name is split by core.js)
 
 const scenePieces = windPieces;  // (core.js)
 
@@ -234,12 +233,8 @@ function checkDrip(now) {
 // behind the sharp drop. Only the shift and softness change each frame.
 const dropDefs = document.querySelector('svg defs');
 heroLogoPieces.filter((pc) => pc.isDrop).forEach((pc, k) => {
-  const use = pc.el.querySelector('use');
-  if (!use || !dropDefs) return;
-  // The drop shape is rotated inside its group; remember by how much, so the
-  // shift can be turned into the drop's own direction
-  const m = /rotate\(([-\d.]+)\)/.exec(use.getAttribute('transform') || '');
-  pc.useAngle = m ? (parseFloat(m[1]) * Math.PI) / 180 : 0;
+  const shape = pc.el.querySelector('path');  // the filter goes on the shape; its group moves (core.js)
+  if (!shape || !dropDefs) return;
 
   const filter = document.createElementNS(svgNS, 'filter');
   filter.id = `drop-trail-${k}`;
@@ -251,7 +246,7 @@ heroLogoPieces.filter((pc) => pc.isDrop).forEach((pc, k) => {
     <feComponentTransfer in="ahead" result="faint"><feFuncA type="linear" slope="${FLOW.trailStrength}"/></feComponentTransfer>
     <feMerge><feMergeNode in="faint"/><feMergeNode in="SourceGraphic"/></feMerge>`;
   dropDefs.append(filter);
-  use.setAttribute('filter', `url(#${filter.id})`);
+  shape.setAttribute('filter', `url(#${filter.id})`);
   pc.trail = {
     id: filter.id,
     blur: filter.querySelector('feGaussianBlur'),
@@ -262,11 +257,9 @@ heroLogoPieces.filter((pc) => pc.isDrop).forEach((pc, k) => {
 
 function updateDropTrail(pc, vx, vy, speed) {
   if (!pc.trail || perf.lite) return;
-  // Turn the movement into the drop shape's own (rotated) direction
-  const c = Math.cos(-pc.useAngle), sn = Math.sin(-pc.useAngle);
   const k = FLOW.trailReach / (FLOW.sway * 0.7);
-  const dx = (vx * c - vy * sn) * k;
-  const dy = (vx * sn + vy * c) * k;
+  const dx = vx * k;
+  const dy = vy * k;
   const sd = FLOW.trailBlur * (0.4 + 0.6 * clamp01(speed));
   const key = `${dx.toFixed(2)} ${dy.toFixed(2)} ${sd.toFixed(2)}`;
   if (key === pc.trail.last) return;  // only touch the filter when it changes
@@ -374,7 +367,7 @@ const introPieces = () => [...navPieces, ...heroTextPieces];
 function startIntro() {
   introPieces().forEach((pc) => { pc.click = 1; pc.clickIn = true; pc.clickWater = null; renderPiece(pc); });
   // The drop falls on the middle of the mark (the three drops)
-  const mark = heroLogo.querySelector('.mark').getBoundingClientRect();
+  const mark = heroLogo.querySelector('.logo-mark').getBoundingClientRect();
   startDrip('in', mark.left + mark.width / 2, mark.top + mark.height / 2, performance.now() + DRIP.introDelay);
   hero.drip.intro = true;
 }
@@ -713,8 +706,8 @@ Site.onHoverFrame.push(bendLines, arrowsFrame);
 Site.onPointer.push(() => { if (hero.progress < 1) wakeHero(); });
 Site.onLite.push((lite) => {
   heroLogoPieces.forEach((pc) => {     // the soft trail on the logo drops
-    const use = pc.trail && pc.el.querySelector('use');
-    if (use) use.setAttribute('filter', lite ? 'none' : `url(#${pc.trail.id})`);
+    const shape = pc.trail && pc.el.querySelector('path');
+    if (shape) shape.setAttribute('filter', lite ? 'none' : `url(#${pc.trail.id})`);
   });
 });
 

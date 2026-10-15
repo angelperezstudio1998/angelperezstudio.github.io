@@ -53,8 +53,7 @@
   --fg-3: var(--taupe);  /* large details    5.4:1 */
   --line: rgba(214, 199, 174, 0.18);
 
-  /* Fonts (placeholders) */
-  --font-logo:  "Comfortaa", system-ui, sans-serif;
+  /* Fonts (placeholders; the logo is drawn, not typed) */
   --font-body:  "Inter", system-ui, sans-serif;
   --font-label: "Geist Mono", ui-monospace, monospace;
 
@@ -133,8 +132,9 @@ ul { padding: 0; list-style: none; }
   color: var(--fg-2);
 }
 
-/* Logo pieces */
-.mark { fill: currentColor; display: block; overflow: visible; }
+/* The logo (the real artwork, drawn as SVG shapes in the HTML; it takes the
+   text color, so it's cream on burgundy and burgundy on cream) */
+.logo { fill: currentColor; display: block; overflow: visible; }
 /* The logo and name can't be highlighted (selected) by clicking or dragging,
    and nothing gets highlighted while holding the mouse to draw lines */
 .hero__logo,
@@ -145,16 +145,9 @@ ul { padding: 0; list-style: none; }
   -webkit-tap-highlight-color: transparent;
 }
 
-.wordmark {
-  font-family: var(--font-logo);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-
 /* Text and logos are split into pieces (each drop, each letter) by the scripts so
    they can move one by one. Words stay together so lines only break between words. */
-.mark .piece { transform-box: fill-box; transform-origin: center; }
+.logo .piece { transform-box: fill-box; transform-origin: center; }
 .char { display: inline-block; white-space: pre; }
 .word { display: inline-block; white-space: nowrap; }
 
@@ -257,17 +250,15 @@ ul { padding: 0; list-style: none; }
 
 .site-header__logo {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: center;        /* the space between the drops and the name is part of the drawing */
   --link: var(--burgundy);    /* the small logo only appears on cream (links set --link, not color) */
 }
-.site-header__logo .mark { width: 26px; height: 26px; }
-.site-header__logo .wordmark { font-size: 20px; }
+.site-header__logo .logo { height: 26px; width: auto; }
+.site-header__logo .word { display: block; }
 
 /* With JavaScript on: hidden at first, blows in later (core.js; home.js on the home page) */
 .js .site-header__logo { pointer-events: none; }
-.js .site-header__logo .piece,
-.js .site-header__logo .char { opacity: 0; }
+.js .site-header__logo .piece { opacity: 0; }
 .js.is-scrolled .site-header__logo { pointer-events: auto; }
 
 .site-nav {
@@ -313,18 +304,14 @@ ul { padding: 0; list-style: none; }
 }
 
 .hero__logo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: clamp(16px, 2.5vw, 32px);
   color: var(--cream);
-  white-space: nowrap;
 }
 .hero__logo { cursor: pointer; }  /* clicking it plays the water drop and goes to the work list (home.js) */
 .hero__logo:focus { outline: none; }
 .hero__logo:focus-visible { outline: 1px solid var(--fg-3); outline-offset: 12px; }
-.hero__logo .mark { width: clamp(72px, 10vw, 140px); height: auto; }
-.hero__logo .wordmark { font-size: clamp(48px, 10vw, 150px); }
+/* Width of the big logo: 78% of the screen, at most 920px, and small enough
+   on short, wide screens to fit (the logo is 2.5× as wide as it is tall) */
+.hero__logo .logo { width: min(78vw, 920px, 150vh); height: auto; }
 
 .hero__corner {
   position: absolute;
@@ -622,7 +609,7 @@ ul { padding: 0; list-style: none; }
 
 /* ---------- 12. Phones ---------- */
 @media (max-width: 600px) {
-  .site-header__logo .wordmark { display: none; }  /* just the mark on small screens */
+  .site-header__logo .word { display: none; }  /* just the drops on small screens */
 
   .hero__corner { bottom: 72px; }
   .hero__corner--right { bottom: 24px; left: var(--gutter); right: auto; text-align: left; }

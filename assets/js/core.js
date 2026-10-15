@@ -28,7 +28,7 @@
 //
 // KEY IDEAS / WORDS USED IN THE COMMENTS
 //   piece    : one thing that moves on its own: a letter (<span class="char">)
-//              or one drop of a logo (<g class="piece">). Each piece is a small
+//              or one drop / letter of the logo (class="piece"). Each piece is a small
 //              object (see makePiece) that remembers its state.
 //   amount   : how "gone" a piece is. 0 = in place and visible, 1 = carried
 //              off and invisible. Everything is built on this.
@@ -136,15 +136,14 @@ const TRANSITION = {
   band: 260,       // width of the contrasting band when the colors match (px)
 };
 
-// Background pattern: outlines of single water drops from the logo, laid out
-// like the logo repeated (right way up, flipped on its head, right way up…).
-// Every drop is the same distance from its neighbors and faces the way it
-// does in the logo. It shows in a soft patch around the mouse and in the
-// click ripples. Both are drawn together on the canvas (section 7) from one
-// set of drops, so a ripple moves the very drops you see around the mouse.
+// Background pattern: outlines of the logo's teardrop (drops 2 and 3; drop 1
+// is unique to the logo) facing six ways, laid out like
+// "3. Logo/Pattern Screenshot.jpg" (section 3). It shows in a soft patch
+// around the mouse and in the click ripples. Both are drawn together on the
+// canvas (section 7) from one set of drops, so a ripple moves the very drops
+// you see around the mouse.
 const PATTERN = {
-  spacing: 28,     // distance between neighboring drops (px)
-  mark: 14,        // height of each drop (px)
+  mark: 18,        // height of each drop (px); the spacing grows and shrinks with it
   opacity: 0.9,    // how visible the pattern is overall (0.9 = 10% see-through)
   radius: 220,     // size of the patch of pattern around the mouse (px)
   hover: 0.6,      // how visible the pattern is around the mouse (0 to 1)
@@ -264,37 +263,56 @@ function frameTick(now) {
 // =========================================================================
 // 3. THE DROP PATTERN — where each drop of the background pattern sits
 // =========================================================================
-// Drops sit in rows; every other row is shifted by half a step, so each drop
-// is the same distance from all six neighbors (a triangle grid). Rows are
-// paired up: each pair is a row of triangles alternating "logo" (point up)
-// and "logo flipped on its head" (point down). Each drop faces the way its
-// spot faces in the logo. The CSS pattern in style.css follows the same rules.
+// The pattern is one tile repeated across the screen in rows and columns.
+// Each tile holds six drops: the same teardrop facing each of six ways
+// (measured from "3. Logo/Pattern Screenshot.jpg"). Sizes are in drop
+// heights, so the whole pattern scales with PATTERN.mark.
+const TILE = { w: 3.549, h: 1.813 };  // tile size (drop heights)
+const TILE_DROPS = [  // [x, y, angle]: where each drop sits in its tile, and which way its point faces (0 = up, clockwise)
+  [ 0.887,  0.356,   0],  // point up      (like drop 2 in the logo)
+  [-0.887, -0.356, 180],  // point down
+  [-0.161,  0.429,  60],  // point up-right
+  [ 0.161, -0.429, 240],  // point down-left
+  [ 1.935,  0.429, 300],  // point up-left  (like drop 3 in the logo)
+  [ 1.614, -0.429, 120],  // point down-right
+];
+const PER_TILE = TILE_DROPS.length;
+const TILE_W = TILE.w * PATTERN.mark;
+const TILE_H = TILE.h * PATTERN.mark;
 
-const ROW = (PATTERN.spacing * Math.sqrt(3)) / 2;  // distance between rows
-const GRID_X = PATTERN.spacing / 4;                 // where the grid starts on screen
-const GRID_Y = ROW / 2;
-
-// Screen position of drop (i, j): column i, row j
+// Screen position of drop (i, j): tile column floor(i / 6), tile row j,
+// and its spot in the tile i mod 6
 function dropAt(i, j) {
-  return { x: GRID_X + i * PATTERN.spacing + mod(j, 2) * (PATTERN.spacing / 2), y: GRID_Y + j * ROW };
+  const [x, y] = TILE_DROPS[mod(i, PER_TILE)];
+  return { x: Math.floor(i / PER_TILE) * TILE_W + x * PATTERN.mark, y: j * TILE_H + y * PATTERN.mark };
 }
 
-// Which way drop (i, j) faces, in degrees. The logo itself is turned 3.42°
-// (that's how its drops sit), so the pattern follows that.
-const LOGO_TURN = 3.42;
-function dropAngle(i, j) {
-  const pair = Math.floor(j / 2);
-  const spot = mod(i - pair, 3);  // shifting each row pair by one makes the diagonals
-  return mod(j, 2) === 0
-    ? [120, 60, 180][spot] + LOGO_TURN    // top row: logo's top drop / flipped logo's top-left / top-right
-    : [240, 300, 0][spot] + LOGO_TURN;    // bottom row: logo's bottom-right / flipped logo's bottom / logo's bottom-left
+// Which way drop i faces, in degrees
+const dropAngle = (i) => TILE_DROPS[mod(i, PER_TILE)][2];
+
+// Calls fn(i, j, x, y) for every drop within `size` px (a square) of (cx, cy)
+function eachDropNear(cx, cy, size, fn) {
+  const c0 = Math.floor((cx - size) / TILE_W) - 1, c1 = Math.floor((cx + size) / TILE_W) + 1;
+  const j0 = Math.floor((cy - size) / TILE_H) - 1, j1 = Math.floor((cy + size) / TILE_H) + 1;
+  for (let j = j0; j <= j1; j++) {
+    for (let c = c0; c <= c1; c++) {
+      for (let k = 0; k < PER_TILE; k++) {
+        const i = c * PER_TILE + k;
+        const { x, y } = dropAt(i, j);
+        if (Math.abs(x - cx) <= size && Math.abs(y - cy) <= size) fn(i, j, x, y);
+      }
+    }
+  }
 }
 
 // The drop nearest to a point on screen (clicks land on it)
 function nearestDrop(x, y) {
-  const j = Math.round((y - GRID_Y) / ROW);
-  const i = Math.round((x - GRID_X - mod(j, 2) * (PATTERN.spacing / 2)) / PATTERN.spacing);
-  return dropAt(i, j);
+  let best = { x, y }, bestD = Infinity;
+  eachDropNear(x, y, PATTERN.mark * 2, (i, j, dx, dy) => {
+    const d = (dx - x) ** 2 + (dy - y) ** 2;
+    if (d < bestD) { bestD = d; best = { x: dx, y: dy }; }
+  });
+  return best;
 }
 
 // =========================================================================
@@ -303,7 +321,7 @@ function nearestDrop(x, y) {
 
 // Split an element's text into one <span class="char"> per letter. Letters are
 // grouped per word (<span class="word">), so lines still only break between
-// words. Use this for plain text (the wordmark, titles, menu links).
+// words. Use this for plain text (titles, menu links).
 // Screen readers: the letters are hidden from them (aria-hidden) and a
 // visually hidden copy of the text (.sr-only, see style.css) is read instead,
 // so words are read as words, links keep their names and nothing is lost.
@@ -389,7 +407,7 @@ function makePiece(el, { tilt, blur }) {
     el,                                         // the element that moves
     i,                                          // its number (seeds its "random" values)
     svg: el.closest('svg'),                     // drops live inside an SVG (different units)
-    isDrop: el.classList.contains('piece'),     // a logo drop rather than a letter
+    isDrop: el.classList.contains('drop'),      // a logo drop rather than a letter
     fixed: !!el.closest('.site-header'),        // in the fixed top bar: stays put when the page scrolls
     rot: (rand(i, 4) - 0.5) * tilt,             // its own rocking direction for hover
     blur,                                       // how blurry it gets when fully gone (px)
@@ -427,13 +445,13 @@ function measureOrder(pieces) {
   pieces.forEach((pc, n) => { pc.order = pts[n] === null ? 0 : (pts[n] - min) / (max - min || 1); });
 }
 
-// Logos: measured like text, plus the SVG scale for the drops.
+// Logos: measured like text, plus the SVG scale (screen px per logo unit).
 // rightFirst: the right end goes first (the big logo blowing away).
 function measureLogo(pieces, rightFirst) {
   measureOrder(pieces);
   pieces.forEach((pc) => {
     if (rightFirst) pc.order = 1 - pc.order;
-    pc.scale = pc.svg ? pc.svg.getBoundingClientRect().width / 200 || 1 : 1;  // the SVG is 200 units wide
+    pc.scale = pc.svg ? pc.svg.getBoundingClientRect().width / pc.svg.viewBox.baseVal.width || 1 : 1;
   });
 }
 
@@ -610,14 +628,11 @@ const offsetFor = (pc) => (pc && pc.fixed ? 0 : Site.offsetY());
 
 // ---- The header (small logo + menu), on every page ----
 const headerLogo = document.querySelector('.site-header__logo');
-document.querySelectorAll('.site-header__logo .wordmark').forEach(splitLetters);
 
-// The drops and letters of a logo
+// The drops and letters of a logo (each is its own shape in the logo's SVG)
 function logoPieces(container, opts) {
   if (!container) return [];
-  return [...container.querySelectorAll('.piece, .char')]
-    .filter((el) => el.classList.contains('piece') || el.textContent.trim() !== '')
-    .map((el) => makePiece(el, opts));
+  return [...container.querySelectorAll('.piece')].map((el) => makePiece(el, opts));
 }
 
 // Every [data-wind] element inside a container, split into letters.
@@ -758,16 +773,16 @@ const background = (() => {
 
   // ---- The drop pattern + click ripples ----
 
-  // One water drop from the logo (same shape as #drop in index.html), centered,
+  // One water drop from the logo (its bottom-left drop, point up), centered,
   // as a reusable outline. One version per direction it can face (cached).
-  const DROP_UNITS = 86;  // how tall the drop is, in the logo's units
-  const dropShape = new Path2D('M0,-48 C12,-30 30,-12 30,8 A30,30 0 1,1 -30,8 C-30,-12 -12,-30 0,-48 Z');
+  const DROP_UNITS = 66.18;  // how tall the drop is, in the logo's units
+  const dropShape = new Path2D('M1.37 -32.33 L19.45 -1.07 C25.75 9.82 22.09 24.07 11.11 30.22 C7.91 32.02 4.45 32.95 1 33.09 L0.08 33.09 L-0.81 33.09 C-8.29 32.79 -15.46 28.79 -19.49 21.82 C-23.51 14.86 -23.41 6.65 -19.93 0.02 L-19.48 -0.75 L-19.02 -1.55 L-1.26 -32.33 C-0.68 -33.34 0.78 -33.34 1.37 -32.33 Z');
   const dropPaths = new Map();
   function dropPath(deg) {
     let path = dropPaths.get(deg);
     if (!path) {
       path = new Path2D();
-      path.addPath(dropShape, new DOMMatrix().rotate(deg).translate(0, 5));
+      path.addPath(dropShape, new DOMMatrix().rotate(deg));
       dropPaths.set(deg, path);
     }
     return path;
@@ -809,20 +824,6 @@ const background = (() => {
     let d = drops.get(key);
     if (!d) { d = { i, j, light: 0, px: 0, py: 0, swell: 0 }; drops.set(key, d); }
     return d;
-  }
-
-  // Calls fn(i, j, x, y) for every drop within `size` px of (cx, cy)
-  function eachDropNear(cx, cy, size, fn) {
-    const S = PATTERN.spacing;
-    const j0 = Math.ceil((cy - size - GRID_Y) / ROW), j1 = Math.floor((cy + size - GRID_Y) / ROW);
-    for (let j = j0; j <= j1; j++) {
-      const shift = mod(j, 2) * (S / 2);
-      const i0 = Math.ceil((cx - size - GRID_X - shift) / S), i1 = Math.floor((cx + size - GRID_X - shift) / S);
-      for (let i = i0; i <= i1; i++) {
-        const { x, y } = dropAt(i, j);
-        fn(i, j, x, y);
-      }
-    }
   }
 
   function drawDrops(now) {
@@ -892,7 +893,7 @@ const background = (() => {
       ctx.globalAlpha = d.light * PATTERN.opacity;
       ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * (x + d.px), dpr * (y + d.py));
       ctx.lineWidth = 1 / scale;  // keep the outline 1px thick at any size
-      ctx.stroke(dropPath(dropAngle(d.i, d.j)));
+      ctx.stroke(dropPath(dropAngle(d.i)));
     });
     ctx.globalAlpha = 1;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
