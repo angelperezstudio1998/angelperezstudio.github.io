@@ -609,7 +609,42 @@ ul { padding: 0; list-style: none; }
 /* Arriving on the home page at Work or Contact: start on cream */
 .is-arriving-cream body { background: var(--cream); }
 
-/* ---------- 12. Phones ---------- */
+/* ---------- 12. Phones ----------
+   Phones (class "is-phone" on <html>, set in index.html) get the home page as
+   a normal scrolling page: the scenes sit one after another instead of being
+   stacked on one fixed screen (home.js, section 8). */
+.js.is-phone .stage {
+  position: relative;
+  inset: auto;
+  overflow: visible;
+  overflow-x: clip;           /* letters flowing in from the side never make the page scroll sideways */
+}
+.js.is-phone .scene { position: relative; inset: auto; }
+.js.is-phone .scene--hero { min-height: 100vh; min-height: 100svh; }
+/* Phones, About page: the image boxes are simply there (no fade or drift) */
+@media (max-width: 699.98px) {
+  .js .reveal .ph { opacity: 1; transform: none; transition: none; }
+}
+.js.is-phone .scroll-space { display: none; }
+/* The sections stay see-through: the page background behind them is
+   burgundy down to the work list and cream below it (painted by home.js),
+   so the ripples on the canvas behind show everywhere */
+.js.is-phone .scene--contact { min-height: 100vh; min-height: 100svh; }
+/* The page scrolls under the top bar: a soft fade of the color behind it */
+.js.is-phone .site-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 -24px 0;
+  z-index: -1;
+  pointer-events: none;
+  /* Matches the page right behind it: burgundy above the color edge, cream
+     below (home.js moves --edge as you scroll), fading out at the bottom */
+  background: linear-gradient(var(--burgundy) var(--edge, 100%), var(--cream) var(--edge, 100%));
+  -webkit-mask-image: linear-gradient(#000 50%, transparent);
+  mask-image: linear-gradient(#000 50%, transparent);
+}
+
+/* Small-screen layout tweaks */
 @media (max-width: 600px) {
   .site-header__logo .word { display: none; }  /* just the drops on small screens */
 

@@ -8,7 +8,8 @@
 // is split into letters by core.js's tools, and each block (class="reveal")
 // flows in on the liquid wind the first time it comes into view, using the
 // same burn front as everything else. Placeholder boxes (class="ph") fade in
-// with their block (style.css, "About page").
+// with their block (style.css, "About page"). On phones nothing animates:
+// the text, boxes and top bar are simply there and links open right away.
 //
 //   1. SETTINGS ......... timing of the blocks flowing in
 //   2. PIECES ........... the blocks and their letters
@@ -70,7 +71,8 @@ function flowIn(b, delay = 0) {
   if (b.started) return;
   b.started = true;
   if (b.el) b.el.classList.add('is-in');  // placeholder boxes fade in (CSS); the glass may switch on
-  if (reduceMotion) { b.p = 1; renderBlock(b); updateGlass(); return; }
+  // Phones: everything is simply there, nothing flows in
+  if (reduceMotion || smallScreen) { b.p = 1; renderBlock(b); updateGlass(); return; }
   const start = performance.now() + delay;
   const step = (now) => {
     b.p = clamp01((now - start) / ABOUT.flowTime);
@@ -138,4 +140,5 @@ Site.start();  // measures and draws everything hidden (p = 0)
 // Then: the header flows in, and the blocks already on screen follow it
 flowIn(headerBlock, ABOUT.firstDelay);
 blocksReady = true;
+if (smallScreen) blocks.forEach((b) => flowIn(b));  // phones: everything is there from the start
 checkBlocks(ABOUT.firstDelay + ABOUT.stagger);

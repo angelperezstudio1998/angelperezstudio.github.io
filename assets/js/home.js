@@ -8,6 +8,13 @@
 // and scrolling plays a timeline. Each scene (hero → work → contact) flows
 // in and blows away on the liquid wind from core.js.
 //
+// PHONES (screens narrower than PHONE.width) get a calm, simple version: the
+// page scrolls normally, top to bottom. The only animation is the logo
+// forming out of a water drop when the page first opens; everything else is
+// simply there (taps still make a ripple in the background). The page is
+// burgundy behind the logo and cream from the work list down (section 8). The class "is-phone"
+// on <html> is set in index.html before the page shows, so the CSS knows too.
+//
 //   1. SETTINGS ......... timeline, big logo, menu jumps, clock
 //   2. PIECES ........... the clock, the scenes' text, divider lines, arrows
 //   3. THE BIG LOGO ..... scroll, hover, resting motion, water drop, intro
@@ -15,6 +22,7 @@
 //   5. SCROLL + MENU .... smooth scroll feel, menu jumps
 //   6. HOVER EXTRAS ..... work-list arrows, bending divider lines
 //   7. START-UP ......... hooking into core.js, the intro, the clock
+//   8. PHONES ........... the simpler scrolling version for small screens
 //
 // Shared settings (WIND, HOVER, PATTERN, RIPPLE, COLOR…) are in core.js.
 // =========================================================================
@@ -85,6 +93,16 @@ const NAV = {
 // The corner clock shows YOUR time, not the visitor's. Set your city's time
 // zone, e.g. 'America/New_York', 'Europe/Madrid'. null = visitor's own time.
 const TIME_ZONE = null;
+
+// Phones: the calm, normally scrolling version (section 8)
+const PHONE = {
+  width: 700,      // screens narrower than this (px) get it; keep the same as in index.html and core.js
+};
+const isPhone = root.classList.contains('is-phone');
+// (phone state, used in section 8)
+let creamLine = 0;           // page height where burgundy turns cream (the top of the work list)
+let phoneGlideTo = null;     // where a menu jump is scrolling to (null = not jumping)
+const headerEl = document.querySelector('.site-header');
 
 // =========================================================================
 // 2. PIECES — finding everything on the home page that moves
@@ -200,9 +218,10 @@ function dripAt(pc, now) {
 
 // Start a drop on the logo at (x, y) on screen
 function startDrip(mode, x, y, start = performance.now()) {
+  const off = Site.offsetY();  // the logo's pieces use page coordinates on phones
   // How far the ring has to travel to cross the whole logo
-  const reach = Math.max(...heroLogoPieces.map((pc) => Math.hypot(pc.cx - x, pc.cy - y))) + DRIP.band;
-  hero.drip = { mode, x, y, start, reach, done: false };
+  const reach = Math.max(...heroLogoPieces.map((pc) => Math.hypot(pc.cx - x, pc.cy - y - off))) + DRIP.band;
+  hero.drip = { mode, x, y: y + off, start, reach, done: false };
   background.addDrop(x, y, start);  // the background ripples from the same spot
   wakeHero();
 }
@@ -213,7 +232,7 @@ function checkDrip(now) {
   if (!d || now < d.start + (d.reach / DRIP.speed) * 1000) return;  // still playing
   if (d.mode === 'in') {
     hero.drip = null;                 // logo has formed
-    if (d.intro) startIntroText(now);  // now the menu and other text flow in
+    if (d.intro && !isPhone) startIntroText(now);  // now the menu and other text flow in
     return;
   }
   // 'out': the logo has dissolved
@@ -222,9 +241,10 @@ function checkDrip(now) {
     goTo('#work', true);              // glide to the work list
   } else if (hero.progress >= 1) {
     hero.drip = null;                 // arrived: scrolling back up brings the logo back on the wind
-  } else if (!glide) {
-    // The glide was stopped before the logo scrolled away: let it form again
-    startDrip('in', d.x, d.y, now);
+  } else if (!Site.isGliding()) {
+    // The glide was stopped before the logo scrolled away (or, on phones,
+    // the page has arrived at the work list): let it form again
+    startDrip('in', d.x, d.y - Site.offsetY(), now);
   }
 }
 
@@ -296,7 +316,7 @@ function renderHeroLogo() {
 
     // Resting motion: only the three drops, each on its own rhythm
     let liquid = '';
-    if (pc.isDrop && !reduceMotion) {
+    if (pc.isDrop && !reduceMotion && !isPhone) {  // (phones: the logo rests still)
       const ph = pc.i * 2.1;     // each drop's own phase
       const f = live * (1 - a);  // fades out as the logo blows away
       const A = FLOW.sway;
@@ -341,13 +361,15 @@ function heroFrame(now) {
   hero.skip = calm && !hero.skip;
   if (!hero.skip) renderHeroLogo();
   checkDrip(now);
-  if (hero.progress < 1 || hero.drip) requestAnimationFrame(heroFrame);
-  else hero.running = false;  // logo has blown away: nothing to animate
+  const away = hero.progress >= 1 || isPhone;  // blown away (phones: the logo only moves during its water drop)
+  if (!away || hero.drip) requestAnimationFrame(heroFrame);
+  else hero.running = false;  // logo is gone: nothing to animate
 }
 
 // ---- Clicking the logo: it dissolves like a drop fell on it, then the page goes to the work list ----
 function dripLogo(x, y) {
   if (reduceMotion) { goTo('#work', false); return; }
+  if (isPhone) { goTo('#work', true); return; }  // phones: no dissolve, just scroll to the work list
   if (hero.drip || hero.progress > 0.05) return;  // already playing, or already scrolling away
   startDrip('out', x, y);
 }
@@ -365,7 +387,8 @@ heroLogo.addEventListener('keydown', (e) => {   // keyboard: Enter or Space on t
 const introPieces = () => [...navPieces, ...heroTextPieces];
 
 function startIntro() {
-  introPieces().forEach((pc) => { pc.click = 1; pc.clickIn = true; pc.clickWater = null; renderPiece(pc); });
+  // (phones: only the logo animates; the menu and corner text are simply there)
+  if (!isPhone) introPieces().forEach((pc) => { pc.click = 1; pc.clickIn = true; pc.clickWater = null; renderPiece(pc); });
   // The drop falls on the middle of the mark (the three drops)
   const mark = heroLogo.querySelector('.logo-mark').getBoundingClientRect();
   startDrip('in', mark.left + mark.width / 2, mark.top + mark.height / 2, performance.now() + DRIP.introDelay);
@@ -536,6 +559,7 @@ function stopGlide() {
 }
 
 function goTo(hash, smooth) {
+  if (isPhone) { phoneGoTo(hash, smooth); return; }
   const target = STOPS[hash] * screenH;
   stopGlide();
   if (!smooth || reduceMotion) {
@@ -598,7 +622,7 @@ function measureLines() {
   lines.forEach((ln) => {
     const r = ln.host.getBoundingClientRect();
     ln.x = r.left;
-    ln.y = r.bottom - 0.5;  // where the old 1px border was
+    ln.y = r.bottom - 0.5 + Site.offsetY();  // where the old 1px border was (page coordinates on phones)
     ln.w = r.width;
     ln.svg.setAttribute('viewBox', `0 ${-LINE.room} ${Math.max(1, ln.w)} ${LINE.room * 2}`);
     ln.last = '';
@@ -639,7 +663,7 @@ function bendLines() {
   const live = workScene.lastVisibility !== 'hidden';
   lines.forEach((ln) => {
     const n = ln.pts.length - 1;
-    const dy = ln.y - pointer.sy;               // which side of the line the mouse is on
+    const dy = ln.y - pointer.sy - Site.offsetY();  // which side of the line the mouse is on
     const side = dy >= 0 ? 1 : -1;              // bend away from it
     const near = pointer.active && live && !reduceMotion && Math.abs(dy) < HOVER.radius;
     let moving = false;
@@ -689,6 +713,8 @@ Site.jump = (hash) => {          // menu links to a scene on this page glide the
 Site.isGliding = () => !!glide;
 Site.bg = () => (root.classList.contains('is-light') ? 'cream' : 'burgundy');
 
+if (isPhone) startPhone();  // phones: hooks of their own (section 8), instead of the timeline below
+else {
 Site.onMeasure.push(() => {
   screenH = window.innerHeight;
   scrollSpace.style.height = `${(TIMELINE.end + 1) * screenH}px`;  // page length for the scroll
@@ -702,6 +728,8 @@ Site.onRedraw.push(() => {
   lastProgress.clear();  // positions (or lighter mode) changed: every group must redraw
   update(smoothY);
 });
+window.addEventListener('scroll', startTick, { passive: true });
+}
 Site.onHoverFrame.push(bendLines, arrowsFrame);
 Site.onPointer.push(() => { if (hero.progress < 1) wakeHero(); });
 Site.onLite.push((lite) => {
@@ -711,7 +739,6 @@ Site.onLite.push((lite) => {
   });
 });
 
-window.addEventListener('scroll', startTick, { passive: true });
 Site.start();
 
 // A refresh always starts at the top (browsers normally restore the old
@@ -724,7 +751,7 @@ if (location.hash === '#work' || location.hash === '#contact') {
   const arriving = location.hash === '#work' ? workPieces : contactPieces;
   goTo(location.hash, false);
   history.replaceState(null, '', location.pathname + location.search);
-  if (!reduceMotion) {
+  if (!reduceMotion && !isPhone) {
     // Coming from another page (its color sweep just covered the screen):
     // the top bar and that scene flow in on the wind
     const pieces = [...headerPieces, ...navPieces, ...arriving];
@@ -737,6 +764,76 @@ if (location.hash === '#work' || location.hash === '#contact') {
   if (!reduceMotion) startIntro();  // the logo forms out of a water drop, then the rest flows in
 }
 smoothY = window.scrollY;
-update(smoothY);
+if (!isPhone) update(smoothY);
 
 setInterval(updateTime, 30 * 1000);  // keep the corner clock ticking
+
+// Crossing the phone size (turning a tablet, resizing a window) switches
+// between the two versions: simplest is to reload the page
+window.matchMedia(`(max-width: ${PHONE.width - 0.02}px)`).addEventListener('change', () => location.reload());
+
+// =========================================================================
+// 8. PHONES — the calm, normally scrolling version for small screens
+// =========================================================================
+// The scenes sit one after another and the page scrolls like any page.
+// Nothing flows in or moves: the only animation is the logo forming out of a
+// water drop when the page first opens (section 3), and taps make a ripple
+// in the background. Pieces remember their place on the PAGE
+// (Site.offsetY), so the ripples and glass line up while scrolling. The page
+// background itself is burgundy down to the work list and cream below (a
+// clean edge, no blend), painted here rather than by the sections, so the
+// ripple canvas behind the text shows everywhere.
+
+function startPhone() {
+  Site.scrolls = true;
+  Site.ownBackground = true;  // core.js leaves the page background to us
+  Site.offsetY = () => window.scrollY;
+  Site.isGliding = () => {
+    if (phoneGlideTo !== null && Math.abs(window.scrollY - phoneGlideTo) < 2) phoneGlideTo = null;  // arrived
+    return phoneGlideTo !== null;
+  };
+  // The drops of the pattern: burgundy on the cream part of the page
+  Site.creamAt = (x, y) => y + window.scrollY > creamLine;
+
+  Site.onMeasure.push(() => {
+    measureLogo(heroLogoPieces, true);
+    [heroTextPieces, workPieces, contactPieces].forEach(measureOrder);
+    measureLines();
+    creamLine = workScene.offsetTop;
+    document.body.style.background =
+      `linear-gradient(${COLOR.burgundy} ${creamLine}px, ${COLOR.cream} ${creamLine}px)`;  // two flat colors, clean edge
+  });
+  Site.onRedraw.push(() => {
+    [...workPieces, ...contactPieces].forEach((pc) => place(pc, 0));  // everything simply in place
+    lines.forEach(renderLine);
+    renderHeroLogo();
+    phoneHeader(true);
+  });
+  window.addEventListener('scroll', () => phoneHeader(), { passive: true });
+  ['wheel', 'touchstart', 'keydown'].forEach((type) =>
+    window.addEventListener(type, () => { phoneGlideTo = null; }, { passive: true }));
+}
+
+// The top bar: its background matches the page right behind it, so the color
+// edge slides through it as you scroll (CSS). Once the cream reaches the
+// middle of the bar, the menu turns burgundy and the small logo appears.
+function phoneHeader(force = false) {
+  headerEl.style.setProperty('--edge', `${Math.round(creamLine - window.scrollY)}px`);
+  const light = window.scrollY + 35 > creamLine;
+  if (light === root.classList.contains('is-light') && !force) return;
+  root.classList.toggle('is-light', light);
+  root.classList.toggle('is-scrolled', light);
+  headerLogo.inert = !light;
+  headerPieces.forEach((pc) => place(pc, light ? 0 : 1));
+  if (glassReady) updateGlass();
+}
+
+// Menu jumps on phones: the browser's own smooth scroll to the section
+function phoneGoTo(hash, smooth) {
+  const el = hash === '#top' ? null : document.querySelector(hash);
+  const top = el ? el.offsetTop : 0;
+  const animate = smooth && !reduceMotion;
+  phoneGlideTo = animate ? Math.min(top, document.documentElement.scrollHeight - window.innerHeight) : null;
+  window.scrollTo({ top, behavior: animate ? 'smooth' : 'instant' });
+  if (smooth) focusScene(hash);
+}

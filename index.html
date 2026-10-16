@@ -37,6 +37,9 @@
   <!-- Tells the CSS that JavaScript is running (used for the scroll scenes) -->
   <script>
     document.documentElement.classList.add('js');
+    // Phones get the simpler, normally scrolling version (home.js, section 8).
+    // Keep 700 the same as PHONE.width in home.js.
+    if (window.matchMedia('(max-width: 699.98px)').matches) document.documentElement.classList.add('is-phone');
     // Arriving at #work / #contact (e.g. from the About page): start on cream,
     // so there's no flash of burgundy before the scripts take over
     if (location.hash === '#work' || location.hash === '#contact') document.documentElement.classList.add('is-arriving-cream', 'is-entering');

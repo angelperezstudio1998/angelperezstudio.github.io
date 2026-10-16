@@ -131,12 +131,11 @@ const INTRO_DRIFT = 70;  // how far it flows in from (px)
 // the clicked link gets its water drop, then a misty wavy front of the next
 // page's background color sweeps across the screen from the top left to the
 // bottom right, and the next page opens already in that color. If the screen
-// is already that color, a band of the other color washes across first so you
-// still see the wave pass.
+// is already that color there's no sweep: the next page simply opens once the
+// link has dissolved.
 const TRANSITION = {
   time: 1000,      // how long the sweep takes (ms)
   blur: 60,        // softness of the wavy edge (px)
-  band: 260,       // width of the contrasting band when the colors match (px)
 };
 
 // Background pattern: outlines of the logo's teardrop (drops 2 and 3; drop 1
@@ -569,6 +568,7 @@ const pointer = {
   tap: 0,           // timer that ends a tap
 };
 const hasMouse = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+const smallScreen = window.matchMedia('(max-width: 699.98px)').matches;  // phones (same size as the home page's phone version)
 
 // Move a piece's HOVER layer one frame along. live: 1 = fully visible,
 // 0 = gone (gone pieces don't react). Returns true while it's still moving.
@@ -624,6 +624,9 @@ const Site = {
   jump: null,             // (hash) → true if this page handles a link to that #scene itself
   isGliding: () => false, // is an in-page jump still moving? (links stay dissolved until it stops)
   scrolls: false,         // true on normal scrolling pages (about); false on the fixed home stage
+  creamAt: null,          // optional (x, y) → is that spot on screen cream? (pattern drop colors)
+  ownBackground: false,   // true: the page paints its own background (core.js won't set it)
+  linkDrops: !smallScreen, // false: clicked links open right away, without the water-drop dissolve (phones)
   offsetY: () => 0,       // 0 on fixed-screen pages; window.scrollY on normal scrolling pages
   bg: () => root.dataset.bg || 'burgundy',  // the background color right now ('burgundy' or 'cream')
   start: null,            // set in section 10
@@ -795,6 +798,7 @@ const background = (() => {
 
   // Is this spot cream yet? (follows the same wavy front as drawSweep)
   function creamAt(px, py) {
+    if (Site.creamAt) return Site.creamAt(px, py);  // a page can decide itself (the home page on phones)
     if (base === 'cream') return true;
     if (sweep <= 0) return false;
     if (sweep >= 1) return true;
@@ -962,7 +966,7 @@ const background = (() => {
   function draw(now) {
     // The page background: cream once the sweep is done (or on cream pages)
     const color = base === 'cream' || sweep >= 1 ? COLOR.cream : COLOR[base];
-    if (color !== bodyColor) {
+    if (color !== bodyColor && !Site.ownBackground) {
       document.body.style.backgroundColor = color;
       document.body.style.backgroundImage = GRAIN > 0 ? grainFor(color) : 'none';
       bodyColor = color;
@@ -1130,7 +1134,7 @@ let linkLoopOn = false;
 // A drop on a link at (x, y). waitForGlide: for menu jumps, stay dissolved
 // until the page has arrived. Returns how long the dissolve takes (ms).
 function playLinkDrop(link, x, y, waitForGlide = false) {
-  if (reduceMotion) return 0;
+  if (reduceMotion || !Site.linkDrops) return 0;
   const pieces = linkPieces(link);
   if (!pieces.length) return 0;
   // Measure where each letter is now, and how far the ring has to travel
@@ -1214,10 +1218,10 @@ document.addEventListener('click', (e) => {
   const outMs = playLinkDrop(link, x, y);
 
   const newTab = e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || link.target === '_blank';
-  if (link.dataset.transition && !reduceMotion && !newTab) {
+  if (link.dataset.transition && !reduceMotion && !newTab && !smallScreen) {  // (phones: no sweep, the page just opens)
     // Another page of this site: sweep its color across, then open it
     e.preventDefault();
-    pageTransition(link.dataset.transition, link.href);
+    pageTransition(link.dataset.transition, link.href, outMs);
     return;
   }
   if (href === '#') {
@@ -1242,13 +1246,16 @@ window.addEventListener('pageshow', (e) => {
 // A misty, wavy front of the next page's color sweeps from the top-left
 // corner to the bottom-right one, over everything; then the next page opens.
 // Drawn on its own small canvas on top of the page (made when needed).
+// Already that color: no sweep, the page opens once the link has dissolved.
 let leaving = false;  // a transition is already playing (a second click is ignored)
 
-function pageTransition(color, href) {
+function pageTransition(color, href, outMs = 0) {
   if (leaving) return;
   leaving = true;
-  const other = color === 'cream' ? 'burgundy' : 'cream';
-  const same = Site.bg() === color;  // already that color: wash a band of the other color across first
+  if (Site.bg() === color) {
+    setTimeout(() => { window.location.href = href; }, outMs);
+    return;
+  }
   const cv = document.createElement('canvas');
   cv.className = 'page-sweep';
   cv.setAttribute('aria-hidden', 'true');
@@ -1264,12 +1271,11 @@ function pageTransition(color, href) {
   const u = { x: w / D, y: h / D };   // direction of travel: toward the bottom right
   const n = { x: -u.y, y: u.x };      // along the front
   const edge = TRANSITION.blur * 4;
-  const band = same ? TRANSITION.band : 0;
   const start = performance.now();
 
   // Fill everything behind a wavy front at distance s from the top-left corner
-  const front = (s, fill, t) => {
-    c.fillStyle = COLOR[fill];
+  const front = (s, t) => {
+    c.fillStyle = COLOR[color];
     c.beginPath();
     for (let v = -D; v <= D; v += 30) {
       const wave = Math.sin(v * 0.006 + t * 0.9) * 46 + Math.sin(v * 0.017 - t * 1.4) * 18;
@@ -1286,13 +1292,12 @@ function pageTransition(color, href) {
   const step = (now) => {
     const p = clamp01((now - start) / TRANSITION.time);
     const t = (now - start) / 1000;
-    const s = -edge + easeInOut(p) * (D + 2 * edge + band);  // the leading front
+    const s = -edge + easeInOut(p) * (D + 2 * edge);  // the front
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.clearRect(0, 0, cv.width, cv.height);
     c.setTransform(k, 0, 0, k, pad * k, pad * k);
     c.filter = `blur(${TRANSITION.blur * k}px)`;
-    if (band) front(s, other, t);       // the contrasting band first...
-    front(s - band, color, t);          // ...then the new page's color behind it
+    front(s, t);
     c.filter = 'none';
     if (p < 1) requestAnimationFrame(step);
     else window.location.href = href;   // fully covered: open the next page
@@ -1418,7 +1423,8 @@ root.addEventListener('mouseleave', () => {
 });
 
 // Touchscreens: a tap scatters the pieces around that spot, then they settle
-// back (and the background ripples, section 7). Only real taps count, not
+// back (and the background ripples, section 7). On phones (small screens)
+// only the ripple plays: the letters stay put. Only real taps count, not
 // swipes: the finger must lift close to where it went down, and a swipe that
 // starts scrolling cancels the pointer anyway (reacting to every swipe made
 // scrolling slower on phones).
@@ -1432,6 +1438,8 @@ window.addEventListener('pointerup', (e) => {
   const moved = Math.hypot(e.clientX - touchDown.x, e.clientY - touchDown.y);
   touchDown = null;
   if (moved > 10) return;  // a swipe, not a tap
+  Site.onTap.forEach((fn) => fn(e));
+  if (smallScreen) return;  // phones: no scatter
   pointer.x = pointer.sx = e.clientX;
   pointer.y = pointer.sy = e.clientY;
   pointer.active = true;
@@ -1439,7 +1447,6 @@ window.addEventListener('pointerup', (e) => {
   wakeHover();
   clearTimeout(pointer.tap);
   pointer.tap = setTimeout(() => { pointer.active = false; }, 600);
-  Site.onTap.forEach((fn) => fn(e));
 }, { passive: true });
 
 // On scrolling pages the glass has to follow the text as it scrolls
