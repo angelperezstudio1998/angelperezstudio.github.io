@@ -32,7 +32,8 @@
        Divider lines and the glass blur fade with it.
 
    LAYERS, BACK TO FRONT
-     canvas (.bg, z -2: background, drop pattern, ripples) → film grain (z -1)
+     page background (color + film grain, set by core.js) → canvases (.bg, z -2:
+     cream sweep, drop pattern around the mouse, ripples)
      → scenes (.stage, z 1, with glass behind text) → top bar (z 10)
    ========================================================================= */
 
@@ -153,8 +154,11 @@ ul { padding: 0; list-style: none; }
 
 /* ---------- 3. Background layers ---------- */
 
-/* Burgundy base, cream sweep, the water-drop pattern around the mouse and the
-   click ripples: all drawn by core.js (section 7) */
+/* The cream sweep, the water-drop pattern around the mouse and the click
+   ripples: see-through canvases drawn by core.js (section 7) on top of the
+   page's own background color. core.js adds two more: .bg-sweep (the sweep
+   picture it slides along) and .bg-patch (the small pattern square that
+   follows the mouse). */
 .bg {
   position: fixed;
   inset: 0;
@@ -164,16 +168,10 @@ ul { padding: 0; list-style: none; }
   display: block;
 }
 
-/* Film grain: a tiny noise texture repeated over the whole screen */
-.grain {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: 0.14;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 1.6 -0.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
+/* Film grain: now part of the page background (made by core.js, setting
+   GRAIN), so it costs nothing while things move. This old full-screen layer
+   is switched off. */
+.grain { display: none; }
 
 /* ---------- 4. Glass: a soft blur behind text ----------
    Every word of the smaller text (labels, menu, links) can sit on its own

@@ -51,6 +51,9 @@
 //   - Skip work for things that can't change (hover skips pieces far from
 //     the mouse; the home timeline only redraws groups that changed).
 //   - No big blur filters on the canvas (the sweep is blurred at ¼ size).
+//   - The background only redraws what moves: the sweep is one picture slid
+//     along, the mouse pattern lives in a small square, and the film grain
+//     is part of the page background (section 7).
 //   - Lighter mode (QUALITY / perf.lite): weak devices, or any device that
 //     starts dropping frames, skip the expensive extras (letter blur, glass,
 //     drop trails, water sheen) but keep every animation.
@@ -166,6 +169,9 @@ const RIPPLE = {
   dragGap: 140,    // while dragging, a new drop at most this often (ms)
   max: 8,          // most ripples at once (oldest are dropped)
 };
+
+// Film grain on the page background: how strong the noise is (0 = none)
+const GRAIN = 0.027;
 
 // Brand colors used on the canvas (keep the same as the CSS variables)
 const COLOR = {
@@ -682,20 +688,40 @@ Site.hoverPieces.push(...headerPieces, ...navPieces);
 // Everything here lives inside this one block; the rest of the code talks to
 // it through `background`: setBase(color), setSweep(t), addDrop(x, y),
 // patternChanged(), areas() and resize().
+//
+// SPEED: the page's own background color (body) is the base. The canvases are
+// see-through and only draw what moves on top of it:
+//   - the big canvas (.bg, full screen): the cream sweep while it moves, and
+//     ripples. Hidden the rest of the time.
+//   - a small canvas (.bg-patch) just big enough for the drop pattern around
+//     the mouse, which follows the mouse. Redrawing a small square instead of
+//     the whole screen on every mouse move is what keeps hovering smooth.
+// While ripples play, the mouse patch is drawn on the big canvas instead, so
+// each drop is still only ever drawn once.
 
 const background = (() => {
   const canvas = document.querySelector('.bg');
   const ctx = canvas.getContext('2d');
+  const patch = document.createElement('canvas');  // the small mouse-patch canvas
+  patch.className = 'bg bg-patch';
+  patch.setAttribute('aria-hidden', 'true');
+  canvas.after(patch);
+  Object.assign(patch.style, { inset: 'auto', left: '0', top: '0', width: `${2 * Math.ceil(PATTERN.radius + PATTERN.mark * 2)}px`, height: `${2 * Math.ceil(PATTERN.radius + PATTERN.mark * 2)}px` });
+  const pctx = patch.getContext('2d');
+  const PATCH = 2 * Math.ceil(PATTERN.radius + PATTERN.mark * 2);  // its size (css px)
 
   // The sweep is drawn and blurred on a small copy (¼ size), then scaled up.
   // Blurring a small image is ~16× cheaper and looks the same (the edge is soft anyway).
   const SWEEP_SCALE = 0.25;
   const sweepCanvas = document.createElement('canvas');
+  sweepCanvas.className = 'bg bg-sweep';
+  sweepCanvas.setAttribute('aria-hidden', 'true');
+  canvas.before(sweepCanvas);  // behind the drops
+  Object.assign(sweepCanvas.style, { inset: 'auto', left: '0', top: '0', visibility: 'hidden', willChange: 'transform' });
   const sctx = sweepCanvas.getContext('2d');
-  const pad = SWEEP.blur * 2;  // extra room so the blur never fades at the screen edges
+  let sweepSize = 0, sweepShown = false;
 
   let w = 0, h = 0, dpr = 1;   // canvas size (css px) and pixel density
-  let time = 0;                // clock for the sweep's wavy edge (s)
   let sweep = 0;               // how far the cream has swept in (0–1)
   let base = root.dataset.bg || 'burgundy';  // the page's base color: <html data-bg="cream"> on the about page
   let geo = { D: 1, u: { x: 0, y: 0 }, n: { x: 0, y: 0 } };  // sweep direction, set on resize
@@ -713,52 +739,58 @@ const background = (() => {
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    sweepCanvas.width = Math.ceil((w + pad * 2) * SWEEP_SCALE);
-    sweepCanvas.height = Math.ceil((h + pad * 2) * SWEEP_SCALE);
+    patch.width = patch.height = Math.round(PATCH * dpr);
 
     const D = Math.hypot(w, h);
     const u = { x: -w / D, y: -h / D };  // direction the sweep travels (to the top left)
     geo = { D, u, n: { x: -u.y, y: u.x } };
+    drawSweepImage();
     draw(performance.now());
   }
 
   // ---- Cream sweep: a wavy, misty front from the bottom-right to the top-left ----
+  // The soft wavy edge is drawn ONCE (on resize) into its own canvas, small
+  // and blurred, then shown big. Scrolling only slides that picture along
+  // (a CSS transform), so the browser moves it without redrawing anything.
 
-  const waveAt = (v) => Math.sin(v * 0.006 + time * 0.9) * 46 + Math.sin(v * 0.017 - time * 1.4) * 18;
+  const waveAt = (v) => Math.sin(v * 0.006) * 46 + Math.sin(v * 0.017) * 18;
   const frontAt = () => -SWEEP.edge + sweep * (geo.D + 2 * SWEEP.edge);
 
-  function drawSweep() {
-    if (sweep <= 0) return;
-    if (sweep >= 1) {
-      ctx.fillStyle = COLOR.cream;
-      ctx.fillRect(0, 0, w, h);
-      return;
-    }
+  function drawSweepImage() {
     const { D, u, n } = geo;
     const edge = SWEEP.edge;
-    const front = frontAt();
+    sweepSize = 2 * Math.ceil(D + 2 * edge);         // css px; the front's middle sits in the center
     const k = SWEEP_SCALE;
-
-    sctx.setTransform(1, 0, 0, 1, 0, 0);
-    sctx.clearRect(0, 0, sweepCanvas.width, sweepCanvas.height);
-    sctx.setTransform(k, 0, 0, k, pad * k, pad * k);
-    sctx.filter = `blur(${SWEEP.blur * k}px)`;  // soft, misty edge
+    sweepCanvas.width = sweepCanvas.height = Math.ceil(sweepSize * k);
+    sweepCanvas.style.width = sweepCanvas.style.height = `${sweepSize}px`;
+    const c = sweepSize / 2;
+    sctx.setTransform(k, 0, 0, k, 0, 0);
+    sctx.clearRect(0, 0, sweepSize, sweepSize);
+    sctx.filter = `blur(${SWEEP.blur * k}px)`;      // soft, misty edge
     sctx.fillStyle = COLOR.cream;
     sctx.beginPath();
-    for (let v = -D; v <= D; v += 30) {         // trace the wavy front...
-      const s = front + waveAt(v);
-      const x = w + u.x * s + n.x * v;
-      const y = h + u.y * s + n.y * v;
+    for (let v = -D; v <= D; v += 30) {             // trace the wavy front...
+      const x = c + u.x * waveAt(v) + n.x * v;
+      const y = c + u.y * waveAt(v) + n.y * v;
       v === -D ? sctx.moveTo(x, y) : sctx.lineTo(x, y);
     }
-    sctx.lineTo(w - u.x * edge * 3 + n.x * D, h - u.y * edge * 3 + n.y * D);  // ...and close it off past the corner
-    sctx.lineTo(w - u.x * edge * 3 - n.x * D, h - u.y * edge * 3 - n.y * D);
+    sctx.lineTo(c - u.x * (D + edge) + n.x * D, c - u.y * (D + edge) + n.y * D);  // ...and fill everything behind it
+    sctx.lineTo(c - u.x * (D + edge) - n.x * D, c - u.y * (D + edge) - n.y * D);
     sctx.closePath();
     sctx.fill();
     sctx.filter = 'none';
+    placeSweep();
+  }
 
-    ctx.drawImage(sweepCanvas, -pad, -pad, w + pad * 2, h + pad * 2);
+  // Slide the picture so its front sits where the sweep has got to
+  function placeSweep() {
+    const moving = sweep > 0 && sweep < 1;
+    if (moving !== sweepShown) { sweepCanvas.style.visibility = moving ? '' : 'hidden'; sweepShown = moving; }
+    if (!moving) return;
+    const s = frontAt();
+    const x = w + geo.u.x * s - sweepSize / 2;
+    const y = h + geo.u.y * s - sweepSize / 2;
+    sweepCanvas.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
   }
 
   // Is this spot cream yet? (follows the same wavy front as drawSweep)
@@ -827,7 +859,8 @@ const background = (() => {
     return d;
   }
 
-  function drawDrops(now) {
+  // c = the canvas to draw on; (ox, oy) = where its top-left corner is on screen
+  function drawDrops(now, c, ox, oy) {
     const R = RIPPLE;
     ripples = ripples.filter((rp) => now - rp.start < R.duration);
     drops.forEach((d) => { d.light = 0; d.px = 0; d.py = 0; d.swell = 0; });
@@ -856,17 +889,17 @@ const background = (() => {
       // so the drops ride on smooth water instead of floating on their own.
       if (R.sheen > 0 && !perf.lite) {
         const rgb = creamAt(rp.x, rp.y) ? COLOR.burgundyRGB : COLOR.creamRGB;
-        const g = ctx.createRadialGradient(rp.x, rp.y, inner, rp.x, rp.y, size);
+        const g = c.createRadialGradient(rp.x - ox, rp.y - oy, inner, rp.x - ox, rp.y - oy, size);
         const STEPS = 28;
         for (let s = 0; s <= STEPS; s++) {
           const wv = waterAt(inner + ((size - inner) * s) / STEPS, t, fade);
           const a = s === 0 || s === STEPS ? 0 : R.sheen * PATTERN.opacity * wv.light;  // clear at both edges
           g.addColorStop(s / STEPS, `rgba(${rgb}, ${a.toFixed(3)})`);
         }
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(rp.x, rp.y, size, 0, Math.PI * 2);
-        ctx.fill();
+        c.fillStyle = g;
+        c.beginPath();
+        c.arc(rp.x - ox, rp.y - oy, size, 0, Math.PI * 2);
+        c.fill();
       }
 
       eachDropNear(rp.x, rp.y, size, (i, j, x, y) => {
@@ -890,49 +923,80 @@ const background = (() => {
       if (d.light < 0.01) { drops.delete(key); return; }
       const { x, y } = dropAt(d.i, d.j);
       const scale = base * (1 + R.swell * d.swell);  // swells on the crests
-      ctx.strokeStyle = creamAt(x, y) ? COLOR.burgundy : COLOR.cream;
-      ctx.globalAlpha = d.light * PATTERN.opacity;
-      ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * (x + d.px), dpr * (y + d.py));
-      ctx.lineWidth = 1 / scale;  // keep the outline 1px thick at any size
-      ctx.stroke(dropPath(dropAngle(d.i)));
+      c.strokeStyle = creamAt(x, y) ? COLOR.burgundy : COLOR.cream;
+      c.globalAlpha = d.light * PATTERN.opacity;
+      c.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * (x + d.px - ox), dpr * (y + d.py - oy));
+      c.lineWidth = 1 / scale;  // keep the outline 1px thick at any size
+      c.stroke(dropPath(dropAngle(d.i)));
     });
-    ctx.globalAlpha = 1;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.globalAlpha = 1;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   // ---- Drawing loop: only runs while something is moving ----
 
-  function draw(now) {
-    ctx.fillStyle = COLOR[base];
-    ctx.fillRect(0, 0, w, h);
-    drawSweep();
-    drawDrops(now);
-    showFlat();
+  // Film grain: a small tile of noise in the page's own color, used as the
+  // page background (it used to be a layer blended over the whole screen,
+  // which made the browser redo the whole screen whenever anything moved).
+  // Each pixel is the color made a touch lighter or darker.
+  const grains = new Map();
+  function grainFor(hex) {
+    if (!grains.has(hex)) {
+      const g = document.createElement('canvas');
+      g.width = g.height = 160;
+      const gc = g.getContext('2d');
+      const img = gc.createImageData(160, 160);
+      const rgb = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
+      for (let p = 0; p < img.data.length; p += 4) {
+        const n = (Math.random() + Math.random() + Math.random() - 1.5) * GRAIN;  // soft random, mostly small
+        for (let c = 0; c < 3; c++) img.data[p + c] = rgb[c] + n * Math.min(rgb[c], 255 - rgb[c]);  // like the old overlay: none on pure dark/light
+        img.data[p + 3] = 255;
+      }
+      gc.putImageData(img, 0, 0);
+      grains.set(hex, `url(${g.toDataURL()})`);
+    }
+    return grains.get(hex);
   }
 
-  // Most of the time the canvas is just one flat color (no sweep moving, no
-  // pattern, no ripples). Then it's hidden and the page's own background
-  // shows that color instead: one less full-screen layer for the browser to
-  // keep up while scrolling, which matters on phones.
-  let flat = null;
-  function showFlat() {
-    const color = drops.size || ripples.length ? null
-      : base === 'cream' || sweep >= 1 ? COLOR.cream
-      : sweep <= 0 ? COLOR[base] : null;
-    if (color === flat) return;
-    flat = color;
-    if (color) document.body.style.backgroundColor = color;
-    canvas.style.visibility = color ? 'hidden' : '';
+  let bigOn = true, patchOn = true, bodyColor = null;
+  function draw(now) {
+    // The page background: cream once the sweep is done (or on cream pages)
+    const color = base === 'cream' || sweep >= 1 ? COLOR.cream : COLOR[base];
+    if (color !== bodyColor) {
+      document.body.style.backgroundColor = color;
+      document.body.style.backgroundImage = GRAIN > 0 ? grainFor(color) : 'none';
+      bodyColor = color;
+    }
+
+    // Big canvas: only while ripples play
+    const rippling = ripples.length > 0;
+    const big = rippling;
+    if (big || bigOn) ctx.clearRect(0, 0, w, h);
+    if (big) drawDrops(now, ctx, 0, 0);  // ripples, plus the mouse patch
+    if (big !== bigOn) { canvas.style.visibility = big ? '' : 'hidden'; bigOn = big; }
+
+    // Small canvas: the mouse patch on its own (when no ripples are playing)
+    const small = !rippling && patternFade > 0;
+    if (small) {
+      const ox = Math.round(pointer.px - PATCH / 2), oy = Math.round(pointer.py - PATCH / 2);
+      pctx.setTransform(1, 0, 0, 1, 0, 0);
+      pctx.clearRect(0, 0, patch.width, patch.height);
+      pctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawDrops(now, pctx, ox, oy);
+      patch.style.transform = `translate(${ox}px, ${oy}px)`;
+    } else if (!rippling) {
+      drops.clear();
+    }
+    if (small !== patchOn) { patch.style.visibility = small ? '' : 'hidden'; patchOn = small; }
   }
 
   const patternTarget = () => (pointer.active && hasMouse && !reduceMotion ? 1 : 0);
   const isMoving = () => !reduceMotion &&
-    ((sweep > 0 && sweep < 1) || ripples.length > 0 || patternMoved || patternFade !== patternTarget());
+    (ripples.length > 0 || patternMoved || patternFade !== patternTarget());
 
   function frame(now) {
     frameTick(now);
     const dt = Math.min(now - lastNow, 50) / 1000;
-    time += dt;  // keeps the wave speed steady at any frame rate
     lastNow = now;
     // Ease the mouse patch in or out
     const target = patternTarget();
@@ -1029,8 +1093,8 @@ const background = (() => {
     setSweep(t) {
       if (t === sweep) return;
       sweep = t;
-      if (reduceMotion) draw(performance.now());
-      else wake();
+      placeSweep();                                   // just slides the picture
+      if (sweep <= 0 || sweep >= 1 || ripples.length || patternFade > 0) draw(performance.now());  // page color / drop colors
     },
   };
 })();
