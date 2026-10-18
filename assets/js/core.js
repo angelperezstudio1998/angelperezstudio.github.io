@@ -884,13 +884,14 @@ function updateBehind() {
 
 // Phone browsers color their own top bar (behind the clock) and the area
 // you see when pulling the page down. Tell them the color of the page right
-// at the top, so it never shows a different color there.
+// at the top, so it never shows a different color there. (Only the meta tag:
+// a background on <html> would cover the pattern canvas, which sits behind
+// the page and relies on the body's background being the page's own.)
 const themeMeta = document.querySelector('meta[name="theme-color"]') || document.head.appendChild(Object.assign(document.createElement('meta'), { name: 'theme-color' }));
 function syncTopColor() {
   const cream = root.classList.contains('is-light') || Site.bg() === 'cream';
   const color = cream ? COLOR.cream : COLOR.burgundy;
   if (themeMeta.content !== color) themeMeta.content = color;
-  root.style.backgroundColor = color;
 }
 
 function checkBehindLogo() {
