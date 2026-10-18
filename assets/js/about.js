@@ -16,7 +16,8 @@
 //   3. FLOWING IN ....... the header + the blocks, when they come into view
 //   4. START-UP ......... hooking into core.js
 //
-// Hover, glass, water drops on links, ripples and the page transitions all
+// Hover, glass, water drops on links, ripples, the bending lines, the top bar
+// condensing and the page transitions all
 // come from core.js.
 // =========================================================================
 
@@ -41,10 +42,20 @@ Site.scrolls = true;
 Site.offsetY = () => window.scrollY;
 Site.bg = () => 'cream';
 
-// Each block = its element + the letters inside it
+// The divider lines: the same bending lines as the home page (core.js,
+// "Lines"). Each one flows in with its block and only bends once it's in.
+const blockIn = (host) => host.closest('.reveal').classList.contains('is-in');
+const aboutLines = [
+  ...makeLines('.about-row', 'top', blockIn),
+  ...makeLines('.about-exp li', 'bottom', blockIn),
+  ...makeLines('.about-footer', 'top', blockIn),
+];
+
+// Each block = its element + the letters and lines inside it
 const blocks = [...document.querySelectorAll('.reveal')].map((el) => ({
   el,
   pieces: windPieces(el),
+  lines: aboutLines.filter((ln) => ln.host.closest('.reveal') === el),
   p: 0,            // 0 = not in yet, 1 = fully in
   started: false,
 }));
@@ -65,6 +76,7 @@ const headerBlock = { pieces: [...headerPieces, ...navPieces], p: 0, started: fa
 // Draw a block at its current progress (left end / top first, from the bottom right)
 function renderBlock(b) {
   b.pieces.forEach((pc) => place(pc, 1 - pieceProgress(b.p, pc.order), true));
+  if (b.lines) windLines(b.lines, b.p);
 }
 
 function flowIn(b, delay = 0) {

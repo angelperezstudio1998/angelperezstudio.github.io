@@ -20,7 +20,8 @@
 //   3. THE DROP PATTERN .... where each water drop of the background pattern sits
 //   4. TEXT → PIECES ....... splitting text into letters ("pieces")
 //   5. MOVING A PIECE ...... the liquid wind + hover + water drop, turned into CSS
-//   6. SITE ................ the hooks pages use, and the header (on every page)
+//   6. SITE ................ the hooks pages use, the top bar (condensing into
+//                            the menu button) and the bending lines (every page)
 //   7. BACKGROUND CANVAS ... base color, cream sweep, drop pattern, ripples
 //   8. LINKS ............... water drop on clicked links, page transitions
 //   9. POINTER ............. hover loop, pattern patch, glass, mouse/taps
@@ -126,6 +127,34 @@ const LINK_DRIP = {
 
 // Text flowing in on a page's intro uses the wind
 const INTRO_DRIFT = 70;  // how far it flows in from (px)
+
+// The menu condenses while you scroll down: the words are squashed flat into
+// lines, and the lines are reeled onto a ring like a chain onto a spool (three
+// bars with small gaps), the ring turning counterclockwise. Scrolling up (or pressing
+// the ring) plays it backward. Phones swap them instantly (nothing moves on phones).
+const FOLD = {
+  time: 1000,      // how long the whole change takes (ms)
+  squash: 0.3,     // how much of that time the words take to get squashed flat into lines
+  radius: 12,      // the ring's size (px; the button in style.css is this + 10px on each side, 44px)
+  gap: 30,         // gap between the ring's bars (degrees; the round ends fill a little of it)
+  dip: 16,         // how long the line's dip down under the ring is (px)
+  settle: 0.2,     // how much of the time the meeting point takes to settle at the ring
+  after: 80,       // never condensed this close to the top of the page (px)
+  scroll: 12,      // how far you scroll one way before it changes (px)
+  reopen: 60,      // after pressing the ring: scroll this much further down before it condenses again (px)
+};
+
+// The divider lines (every page): each one is a single continuous line (an
+// SVG path) with bend points along it. When you hover, the points near the
+// mouse are pushed away from it, so the line bends smoothly around the mouse
+// like a string, then slowly springs back. When its text flows in or blows
+// away, the points are carried by the same liquid wind (section 6, "Lines").
+const LINE = {
+  points: 48,      // bend points per line (more = smoother curve)
+  push: 16,        // how far the line bends away from the mouse (px)
+  reach: 140,      // how far along the line the bend spreads (px)
+  room: 30,        // space above and below the line for bending (px; keep the same as .line in style.css)
+};
 
 // Going to another page (links with data-transition="cream" or "burgundy"):
 // the clicked link gets its water drop, then a misty wavy front of the next
@@ -428,6 +457,8 @@ function makePiece(el, { tilt, blur }) {
     click: 0, clickIn: false, clickWater: null,
     // Base layer: where the scroll timeline last put it
     base: 0, baseIn: false, baseDist: WIND.drift,
+    hidden: false,                              // true while it's out of sight for another reason (a menu word turned into a bar)
+    sharp: false,                               // true: never blurs (the small logo)
   };
   pieceByEl.set(el, pc);
   return pc;
@@ -554,7 +585,7 @@ function renderPiece(pc) {
   const transform = windTransform(pc, off, pc.ox + wx, pc.oy + wy, pc.h * HOVER.tilt * k * Math.sign(pc.rot || 1),
     water && !reduceMotion ? water.size : 1);
   const goneBlur = water ? water.blur : p * pc.blur;
-  const blur = (goneBlur + pc.h * HOVER.blur * k * pc.blurDamp) / pc.scale;
+  const blur = pc.sharp ? 0 : (goneBlur + pc.h * HOVER.blur * k * pc.blurDamp) / pc.scale;
   // Fully gone pieces are invisible: drop their blur too, so the browser has nothing to process
   applyStyle(pc, transform, amount >= 1 ? '' : blurStyle(blur), String(round2((1 - amount) * (1 - pc.h * HOVER.fade))));
 }
@@ -607,7 +638,7 @@ function updateHover(pc, live) {
 }
 
 // =========================================================================
-// 6. SITE — the hooks pages use, and the header (on every page)
+// 6. SITE — the hooks pages use, the top bar and the bending lines (every page)
 // =========================================================================
 // core.js doesn't know what's on each page. Each page's file fills in `Site`:
 // it adds its pieces, registers small functions ("hooks") that core.js calls
@@ -682,8 +713,329 @@ function tuneSmallText(pieces) {
   pieces.filter((pc) => pc.el.closest('.contact__email')).forEach((pc) => { pc.blurDamp = HOVER.emailBlur; });
 }
 tuneSmallText(navPieces);
-headerPieces.forEach((pc) => { pc.hoverDamp = HOVER.menu; });  // the small logo: gentle push too
+headerPieces.forEach((pc) => { pc.hoverDamp = HOVER.menu; pc.sharp = true; });  // the small logo: gentle push, never blurred
 Site.hoverPieces.push(...headerPieces, ...navPieces);
+
+
+// ---- The menu condenses into a ring while scrolling down (settings in FOLD) ----
+// First all three words are squashed flat, as if sandwiched, into lines
+// where they stand. Then the lines are reeled in like a chain onto a spool:
+// they slide right together, and each one dips under the ring and is wound
+// onto it, the ring turning counterclockwise as it reels them in. Wound up, each word shrinks to one
+// bar (and the space between words to a small gap), so the three bars end up
+// evenly spaced around the circle. Opening plays it backward: the ring turns
+// clockwise and the words roll back out.
+// The lines are drawn on one SVG over the top bar (.site-morph); the button
+// (.site-burger) is an invisible hit area on top of the ring.
+const svgNS = 'http://www.w3.org/2000/svg';  // (also used by the lines below and home.js)
+const siteNav = document.querySelector('.site-nav');
+const burger = document.querySelector('.site-burger');
+const morphSvg = document.createElementNS(svgNS, 'svg');
+morphSvg.setAttribute('class', 'site-morph');
+morphSvg.setAttribute('aria-hidden', 'true');
+if (burger) burger.after(morphSvg);
+
+const bars = [...siteNav.querySelectorAll('a')].reverse().map((link) => {  // right to left: the order they're reeled in
+  const path = document.createElementNS(svgNS, 'path');
+  morphSvg.append(path);
+  return {
+    link, path,
+    pieces: navPieces.filter((pc) => link.contains(pc.el)),
+    x0: 0, x1: 0, y: 0,   // where the word sits at rest (set by measureFold)
+    last: '',
+  };
+});
+const ring = { x: 0, y: 0 };  // the ring's center (the button's center)
+const CHAIN_POINTS = 40;      // points along each word's line (more = a smoother curve)
+
+const fold = {
+  on: false,       // condensed (or on its way there)?
+  t: 0,            // where the timeline is: 0 = the menu, 1 = the ring
+  running: false,
+  last: 0,
+  anchor: null,    // the scroll position the direction is measured from
+  slack: 0,        // extra scroll needed before condensing again (after pressing the ring)
+};
+
+function setFold(on) {
+  if (on === fold.on || !burger) return;
+  fold.on = on;
+  root.classList.toggle('is-folded', on);
+  siteNav.inert = on;            // the hidden menu can't be clicked or tabbed to…
+  burger.inert = !on;            // …and neither can the hidden button
+  if (glassReady) updateGlass(); // the menu's glass goes and comes with it
+  if (reduceMotion || smallScreen) { fold.t = on ? 1 : 0; drawFold(); return; }  // phones: an instant swap
+  if (!fold.running) { fold.running = true; fold.last = performance.now(); requestAnimationFrame(foldFrame); }
+}
+
+// Moves the timeline toward the ring (1) or the menu (0); turning around halfway just reverses it
+function foldFrame(now) {
+  const step = (now - fold.last) / FOLD.time;
+  fold.last = now;
+  fold.t = clamp01(fold.t + (fold.on ? step : -step));
+  drawFold();
+  if (fold.t !== (fold.on ? 1 : 0)) requestAnimationFrame(foldFrame);
+  else fold.running = false;
+}
+
+// Wound onto the ring, the chain is shorter: each word becomes one bar and
+// each space between words one gap. chainAt(x) says how far along the wound
+// chain the spot that rests at x (on the menu) ends up (px, from the right end
+// of the last word). Outside the words it isn't shortened.
+function chainAt(x) {
+  const r = FOLD.radius;
+  const bar = (r * (360 / bars.length - FOLD.gap) * Math.PI) / 180;  // one bar's length on the ring (px)
+  const gap = (r * FOLD.gap * Math.PI) / 180;
+  if (x >= bars[0].x1) return -(x - bars[0].x1);                     // right of the menu
+  for (let k = 0; k < bars.length; k++) {
+    const b = bars[k], start = k * (bar + gap);
+    if (x >= b.x0) return start + ((b.x1 - x) / (b.x1 - b.x0 || 1)) * bar;           // on word k
+    const next = bars[k + 1];
+    if (next && x >= next.x1) return start + bar + ((b.x0 - x) / (b.x0 - next.x1 || 1)) * gap;  // the space after it
+  }
+  const last = bars[bars.length - 1];
+  return (bars.length - 1) * (bar + gap) + bar + (last.x0 - x);       // left of the menu
+}
+
+function drawFold() {
+  if (!bars.length) return;
+  const t = fold.t, r = FOLD.radius;
+  // First every word is squashed flat, as if sandwiched, into a line where it stands
+  const squash = ease(segment(t, [0, FOLD.squash]));
+  // Then the lines are reeled in: how far the chain has moved right (when it's
+  // all in, the left end of the first word has just reached the ring)
+  const reel = segment(t, [FOLD.squash * 0.7, 1]);
+  const move = (ring.x - bars[bars.length - 1].x0) * easeInOut(reel);
+  // Where the chain meets the ring (straight under its center). It starts just
+  // right of the menu, so nothing is reeled in at rest, and moves to the ring
+  // quickly as the lines start sliding (the ring is still empty then)
+  const meet = ring.x + Math.max(0, bars[0].x1 + FOLD.dip + 2 - ring.x) * (1 - ease(segment(reel, [0, FOLD.settle])));
+  const wound = chainAt(meet - move);                     // how much chain is on the ring
+  const cy = ring.y;
+  burger.style.opacity = String(round2(ease(segment(t, [0.45, 0.9]))));  // its frosted disc fades in with the ring
+
+  // A spot that rests at x on the menu: where is it now?
+  const spot = (x, bar) => {
+    const p = x + move;
+    if (p <= meet) {                                      // on its way: straight, then dipping under the ring
+      const dip = ease(segment(p, [meet - FOLD.dip, meet]));
+      return [p, bar.y + (cy + r - bar.y) * dip];
+    }
+    const a = Math.PI / 2 - (wound - chainAt(x)) / r;     // wound on: further round the ring, counterclockwise
+    return [meet + r * Math.cos(a), cy + r * Math.sin(a)];
+  };
+
+  bars.forEach((bar) => {
+    // The line (the whole word, once it's flat enough)
+    let d = '';
+    if (squash > 0) {
+      for (let i = 0; i <= CHAIN_POINTS; i++) {
+        const [x, y] = spot(bar.x0 + ((bar.x1 - bar.x0) * i) / CHAIN_POINTS, bar);
+        d += `${i ? 'L' : 'M'}${round2(x)} ${round2(y)}`;
+      }
+    }
+    if (d !== bar.last) { bar.path.setAttribute('d', d); bar.last = d; }
+    bar.path.style.opacity = String(round2(segment(squash, [0.55, 1])));  // the line shows as the word gets flat
+    // The word: squashed flat (and spread a little sideways), sliding with the chain, gone once it's a line
+    const s = bar.link.style;
+    s.transform = squash > 0
+      ? `translateX(${round2(move)}px) scale(${round2(1 + 0.08 * squash)}, ${round2(1 - 0.94 * squash)})`
+      : '';
+    s.opacity = squash > 0 ? String(round2(1 - segment(squash, [0.6, 1]))) : '';
+    bar.pieces.forEach((pc) => { pc.hidden = squash > 0; });  // no hover while it's changing
+  });
+}
+
+// ---- The small logo's frosted background: only while something is behind it ----
+// Checks a few spots over the logo's frosted shape (and a little around it)
+// for page content: text, a box, an image. While there is some, <html> gets
+// .is-behind and the frosted shape fades in (style.css section 5; it also
+// shows while the mouse is over the logo). Checked at most once a frame.
+const BEHIND = { near: 18 };  // how close content has to come (px; the frosted shape itself reaches 14px past the logo)
+const INK = 'p, h1, h2, h3, li, a, span, img, video, .ph';  // what counts as content
+let behindQueued = false;
+let behindLater = 0;  // one more check after scrolling stops (things flowing in may still be moving)
+
+function contentBehindLogo() {
+  if (!headerLogo || !root.classList.contains('is-scrolled')) return false;  // (the logo isn't showing)
+  const r = headerLogo.getBoundingClientRect();
+  const m = BEHIND.near;
+  for (let i = 0; i <= 6; i++) {
+    for (let j = 0; j <= 2; j++) {
+      const x = r.left - m + ((r.width + 2 * m) * i) / 6;
+      const y = r.top - m + ((r.height + 2 * m) * j) / 2;
+      if (x < 0 || y < 0) continue;
+      for (const el of document.elementsFromPoint(x, y)) {
+        if (el.closest('.site-header')) continue;
+        if (el.closest('main') && el.matches(INK)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function checkBehindLogo() {
+  clearTimeout(behindLater);
+  behindLater = setTimeout(() => root.classList.toggle('is-behind', contentBehindLogo()), 600);
+  if (behindQueued) return;
+  behindQueued = true;
+  requestAnimationFrame(() => {
+    behindQueued = false;
+    root.classList.toggle('is-behind', contentBehindLogo());
+  });
+}
+
+// Which way the page is scrolling decides: down condenses, up brings the menu back
+window.addEventListener('scroll', () => {
+  const y = window.scrollY;
+  checkBehindLogo();
+  if (fold.anchor === null || y <= FOLD.after) {   // first scroll (or a jump on opening), or back near the top
+    fold.anchor = y;
+    if (y <= FOLD.after) setFold(false);
+    return;
+  }
+  if (fold.on) {
+    if (y < fold.anchor - FOLD.scroll) { setFold(false); fold.anchor = y; }
+    else fold.anchor = Math.max(fold.anchor, y);
+  } else {
+    if (y > fold.anchor + FOLD.scroll + fold.slack) { setFold(true); fold.anchor = y; fold.slack = 0; }
+    else fold.anchor = Math.min(fold.anchor, y);
+  }
+}, { passive: true });
+
+// Pressing the ring opens the menu again (keyboard: the focus moves to its first link)
+if (burger) {
+  burger.addEventListener('click', () => {
+    const keyboard = burger.matches(':focus-visible');
+    setFold(false);
+    fold.anchor = window.scrollY;
+    fold.slack = FOLD.reopen;
+    if (keyboard) siteNav.querySelector('a').focus({ preventScroll: true });
+  });
+}
+
+// Where each word's line sits and where the ring is (in the top bar's own space)
+function measureFold() {
+  if (!burger) return;
+  const hb = burger.parentElement.getBoundingClientRect();
+  morphSvg.setAttribute('viewBox', `0 0 ${Math.max(1, hb.width)} ${Math.max(1, hb.height)}`);
+  const b = burger.getBoundingClientRect();
+  ring.x = b.left + b.width / 2 - hb.left;
+  ring.y = b.top + b.height / 2 - hb.top;
+  bars.forEach((bar) => {
+    const moved = bar.link.style.transform;
+    bar.link.style.transform = '';  // measure the word at rest
+    const r = bar.link.getBoundingClientRect();
+    bar.link.style.transform = moved;
+    bar.x0 = r.left - hb.left;
+    bar.x1 = r.right - hb.left;
+    bar.y = r.top + r.height / 2 - hb.top;
+    bar.last = '';
+  });
+  drawFold();
+}
+
+// ---- Lines: the bending divider lines (settings in LINE) ----
+// makeLines() turns the border of each matching element into one bending
+// line. edge: 'top' or 'bottom' (which border it replaces). live(host): is
+// that line on screen right now (only those bend)? Pages wind their lines
+// along with their text (windLines).
+const lines = [];
+
+function makeLines(selector, edge, live) {
+  return [...document.querySelectorAll(selector)].map((host) => {
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', `line line--${edge}`);
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS(svgNS, 'path');
+    svg.append(path);
+    host.append(svg);
+    host.classList.add(`has-line--${edge}`);  // its border is hidden (style.css)
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    const ln = {
+      host, svg, path, edge,
+      live: () => live(host),
+      x: 0, y: 0, w: 0,                       // where it sits (set by measureLines)
+      pts: Array.from({ length: LINE.points }, () => ({
+        hy: 0,           // hover bend (px), eases toward its target
+        wx: 0, wy: 0,    // wind offset (px)
+      })),
+      moving: false, last: '',
+    };
+    lines.push(ln);
+    return ln;
+  });
+}
+
+function measureLines() {
+  lines.forEach((ln) => {
+    const r = ln.host.getBoundingClientRect();
+    ln.x = r.left;
+    ln.y = (ln.edge === 'top' ? r.top + 0.5 : r.bottom - 0.5) + Site.offsetY();  // where the 1px border was
+    ln.w = r.width;
+    ln.svg.setAttribute('viewBox', `0 ${-LINE.room} ${Math.max(1, ln.w)} ${LINE.room * 2}`);
+    ln.last = '';
+    renderLine(ln);
+  });
+}
+
+// Draw a line through its bend points (only touches the page when it changed)
+function renderLine(ln) {
+  const n = ln.pts.length - 1;
+  let d = '';
+  ln.pts.forEach((pt, k) => {
+    const x = (ln.w * k) / n + pt.wx;
+    const y = pt.hy + pt.wy;
+    d += `${k ? 'L' : 'M'}${round2(x)} ${round2(y)}`;
+  });
+  if (d !== ln.last) { ln.path.setAttribute('d', d); ln.last = d; }
+}
+
+// Carry each bend point with the wind, like the letters next to it.
+// pIn: 0–1 how far it has flowed in; pOut: 0–1 how far it has blown away.
+function windLines(list, pIn, pOut = 0) {
+  list.forEach((ln) => {
+    const n = ln.pts.length - 1;
+    ln.pts.forEach((pt, k) => {
+      const fake = { cx: ln.x + (ln.w * k) / n, cy: ln.y };  // this point's spot
+      const order = (fake.cx / window.innerWidth) * 0.75 + ((fake.cy - Site.offsetY()) / window.innerHeight) * 0.25;
+      const amount = pOut > 0 ? pieceProgress(pOut, 1 - order) : 1 - pieceProgress(pIn, order);
+      const off = reduceMotion || amount <= 0 ? STILL : windOffset(fake, amount, WIND.drift, pOut <= 0);
+      pt.wx = off.x;
+      pt.wy = off.y;
+    });
+    renderLine(ln);
+  });
+}
+
+// Hover: bend the points near the mouse away from it. Returns true while moving.
+function bendLines() {
+  let busy = false;
+  lines.forEach((ln) => {
+    const n = ln.pts.length - 1;
+    const dy = ln.y - Site.offsetY() - pointer.sy;  // which side of the line the mouse is on
+    const side = dy >= 0 ? 1 : -1;                  // bend away from it
+    const near = pointer.active && !reduceMotion && Math.abs(dy) < HOVER.radius && ln.live();
+    let moving = false;
+    ln.pts.forEach((pt, k) => {
+      let target = 0;
+      if (near) {
+        const dx = ln.x + (ln.w * k) / n - pointer.sx;
+        const d = Math.hypot(dx / LINE.reach, dy / HOVER.radius);  // smooth falloff along and across the line
+        target = side * LINE.push * clamp01(1 - d) ** 2;
+      }
+      const rate = Math.abs(target) > Math.abs(pt.hy) ? HOVER.speed : HOVER.settle;  // out slowly, back even slower
+      pt.hy += (target - pt.hy) * rate;
+      if (Math.abs(target - pt.hy) > 0.02 || target !== 0) moving = true;
+      else pt.hy = target;
+    });
+    if (moving || ln.moving) renderLine(ln);
+    ln.moving = moving;
+    if (moving) busy = true;
+  });
+  return busy;
+}
+Site.onHoverFrame.push(bendLines);
 
 // =========================================================================
 // 7. BACKGROUND CANVAS — base color, cream sweep, drop pattern, ripples
@@ -1318,7 +1670,7 @@ function hoverFrame() {
   let busy = pointer.active;
 
   Site.hoverPieces.forEach((pc) => {
-    const live = 1 - Math.max(pc.base, pc.click);  // pieces that are gone don't react
+    const live = pc.hidden ? 0 : 1 - Math.max(pc.base, pc.click);  // pieces that are gone don't react
     const moving = updateHover(pc, live);
     if (moving || pc.hovering) renderPiece(pc);    // one last draw when it settles
     pc.hovering = moving;
@@ -1358,9 +1710,10 @@ function followPattern() {
 // .glass class. Their boxes are measured once (in remeasure, section 10).
 // Every word of the SMALLER text gets its own pane (words are made by the
 // letter splitting in section 4), so only the area right behind the letters
-// is blurred. Big titles (data-wind="letters") are readable enough without it.
+// is blurred. Big titles (data-wind="letters") are readable enough without it,
+// and so is the small logo (it's solid shapes, and stays sharp).
 // (Blurring and glass are skipped entirely in lighter mode.)
-const GLASS_SELECTOR = '[data-wind]:not([data-wind="letters"]) .word, .site-nav .word, .site-header__logo .word';
+const GLASS_SELECTOR = '[data-wind]:not([data-wind="letters"]) .word, .site-nav .word';
 let glassHosts = [];  // found in Site.start(), once the page has split its text into words
 function collectGlass() {
   glassHosts = [...document.querySelectorAll(GLASS_SELECTOR)]
@@ -1391,8 +1744,8 @@ function updateGlass() {
   glassHosts.forEach((g) => {
     if (!g.box) return;
     const visible = g.scene ? g.scene.lastVisibility !== 'hidden'
-      : g.block ? g.block.classList.contains('is-in')                                   // about page: once its block has flowed in
-      : !g.el.closest('.site-header__logo') || root.classList.contains('is-scrolled');  // the small logo only once it's in
+      : g.block ? g.block.classList.contains('is-in')  // about page: once its block has flowed in
+      : !fold.on;                                      // the menu: not while the top bar is condensed
     const on = visible && areas.some((c) => boxTouchesCircle(g.box, c, g.fixed ? 0 : off));
     if (on !== g.on) { g.el.classList.toggle('glass', on); g.on = on; }
   });
@@ -1464,7 +1817,10 @@ function remeasure() {
   measureLogo(headerPieces, false);    // small logo: left end arrives first
   measureOrder(navPieces);
   Site.onMeasure.forEach((fn) => fn());  // the page measures its own pieces
+  measureLines();
+  measureFold();
   measureGlass();
+  checkBehindLogo();                     // is anything behind the small logo right now?
   Site.onRedraw.forEach((fn) => fn());   // the page redraws its pieces
   navPieces.forEach(renderPiece);        // the menu (it may be mid-intro)
   updateGlass();

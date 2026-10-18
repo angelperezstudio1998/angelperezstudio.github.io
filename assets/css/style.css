@@ -25,6 +25,8 @@
        properties on .char here, or the two will fight.
      - The scripts set these on <html>: .is-light (the cream has reached the top,
        so the menu turns burgundy), .is-scrolled (the small logo is in),
+       .is-folded (the top bar is condensed: menu button instead of the menu),
+       .is-behind (page content is behind the small logo: it gets frosted glass),
        .is-drawing (mouse held down: no text selection), .is-lite (lighter
        mode for slower devices: no glass blur), .is-entering (a page that
        opens mid-transition stays hidden for its first frame).
@@ -203,12 +205,11 @@ ul { padding: 0; list-style: none; }
 /* Which elements can get glass: every word of the smaller text on its own
    (<span class="word">, made by the scripts), so the blur hugs the letters.
    Big titles (data-wind="letters") don't need it and are left out, and so is
-   the big home-screen logo. Words don't move themselves (only their letters
+   the logos (solid shapes, always sharp). Words don't move themselves (only their letters
    do), so their panes stay steady. core.js uses the same list
    (GLASS_SELECTOR, core.js section 9). */
 .js [data-wind]:not([data-wind="letters"]) .word,
-.js .site-nav .word,
-.js .site-header__logo .word {
+.js .site-nav .word {
   position: relative;
   isolation: isolate;                        /* keeps the pane right behind its own word */
 }
@@ -247,12 +248,36 @@ ul { padding: 0; list-style: none; }
 }
 
 .site-header__logo {
+  position: relative;         /* (for its frosted background, below) */
   display: flex;
   align-items: center;        /* the space between the drops and the name is part of the drawing */
   --link: var(--burgundy);    /* the small logo only appears on cream (links set --link, not color) */
 }
+/* While something on the page is behind the logo (core.js adds .is-behind to
+   <html>), or the mouse is over it, the logo sits on the same frosted glass
+   as the menu ring (.site-burger), so text scrolling under it is blurred away. */
+.site-header__logo::before {
+  content: "";
+  position: absolute;
+  inset: -8px -14px;
+  z-index: -1;
+  border-radius: 999px;
+  pointer-events: none;
+  background: rgba(214, 199, 174, 0.42);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
+  backdrop-filter: blur(10px) saturate(1.4);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.is-behind.is-scrolled .site-header__logo::before,
+.is-scrolled .site-header__logo:hover::before { opacity: 1; }  /* (only while the logo is showing: on the home page it comes in later) */
+.is-lite .site-header__logo::before { -webkit-backdrop-filter: none; backdrop-filter: none; }
+@media (max-width: 699.98px) {
+  .site-header__logo::before { transition: none; }  /* phones: nothing moves, it simply appears */
+}
 .site-header__logo .logo { height: 26px; width: auto; }
 .site-header__logo .word { display: block; }
+
 
 /* With JavaScript on: hidden at first, blows in later (core.js; home.js on the home page) */
 .js .site-header__logo { pointer-events: none; }
@@ -271,6 +296,85 @@ ul { padding: 0; list-style: none; }
 }
 .is-light .site-nav { color: var(--burgundy); }  /* once the cream sweep reaches it */
 /* Menu links fade to a lighter color on hover (shared link rule, section 2) */
+
+/* Condensed top bar (scrolling down, core.js section 6): one word after
+   another slides right and turns into one bar of a ring, drawn on .site-morph
+   (an SVG over the whole top bar). .site-burger is the invisible button on top
+   of the ring; pressing it brings the menu back. The ring's size is FOLD.radius
+   in core.js (12px: it sits in the middle of this 44px button, so its right
+   edge lines up with the page margin). */
+.site-burger {
+  position: absolute;
+  right: calc(var(--gutter) - 10px);
+  top: 50%;
+  translate: 0 -50%;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  /* A soft frosted disc behind the ring (fades in with it, core.js) */
+  background: rgba(59, 0, 8, 0.24);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
+  backdrop-filter: blur(10px) saturate(1.4);
+  opacity: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.is-light .site-burger { background: rgba(214, 199, 174, 0.42); }
+.is-lite .site-burger { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.site-burger:focus { outline: none; }
+.site-burger:focus-visible { outline: 1px solid var(--cream); outline-offset: -4px; }
+.is-light .site-burger:focus-visible { outline-color: var(--burgundy); }
+.site-burger[inert],
+.is-folded .site-nav { pointer-events: none; }
+.site-nav a { transform-origin: center; }  /* (the words flatten toward their middle) */
+
+.site-morph {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  --link: var(--cream);          /* same color and hover fade as the menu */
+  color: var(--link);
+  transition: color 0.6s ease;
+}
+.is-light .site-morph { --link: var(--burgundy); }
+.site-burger:hover + .site-morph { color: color-mix(in srgb, var(--link) 55%, transparent); }
+.site-morph path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6px;           /* thickness of the ring's bars */
+  stroke-linecap: round;
+  opacity: 0;
+}
+
+/* Divider lines (every page). Without JavaScript they're plain borders. With
+   JavaScript, core.js (section 6, "Lines") replaces each one with an SVG line
+   (.line) that bends around the mouse and flows in and out with its text.
+   The SVG is taller than the line (60px, keep half of it the same as
+   LINE.room) so the line has room to bend; it's centered on where the border
+   was. */
+.js .has-line--bottom { border-bottom: none; }
+.js .has-line--top { border-top: none; }
+.line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  bottom: -30px;               /* half the height: the line sits where the border was */
+  height: 60px;
+  overflow: visible;
+  pointer-events: none;
+}
+.line--top { top: -30px; bottom: auto; }
+.line path {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
 
 /* ---------- 6. Scenes ---------- */
 .scene {
@@ -381,31 +485,6 @@ ul { padding: 0; list-style: none; }
 
 .work-item--soon .work-item__title { color: var(--fg-3); }
 
-/* Divider lines. Without JavaScript they're plain borders. With JavaScript,
-   home.js replaces each border with one SVG line (.line) that bends around
-   the mouse and is carried by the wind on scroll. The SVG is taller than the
-   line (60px) so the line has room to bend; it's centered on where the
-   border was. */
-.js .section-head,
-.js .work-item {
-  position: relative;
-  border-bottom: none;
-}
-.line {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  bottom: -30px;               /* half the height: the line sits where the border was */
-  height: 60px;
-  overflow: visible;
-  pointer-events: none;
-}
-.line path {
-  fill: none;
-  stroke: var(--line);
-  stroke-width: 1px;
-  vector-effect: non-scaling-stroke;
-}
 
 /* ---------- 9. Scene 3: contact ---------- */
 .scene--contact {
@@ -457,15 +536,8 @@ ul { padding: 0; list-style: none; }
   background: var(--cream);
   color: var(--fg);
 }
-/* The page scrolls under the top bar: a soft cream fade keeps the menu readable */
-.page-about .site-header::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 -28px 0;
-  z-index: -1;
-  pointer-events: none;
-  background: linear-gradient(var(--cream) 50%, rgba(214, 199, 174, 0));
-}
+/* The top bar has no background here either (like the home page): the page
+   scrolls under it (the menu ring has a frosted disc, section 5) */
 
 .about {
   padding: clamp(120px, 18vh, 180px) var(--gutter) 40px;
@@ -580,10 +652,8 @@ ul { padding: 0; list-style: none; }
 
 /* With JavaScript on: lines and tag outlines appear with their block's text */
 .js .reveal:not(.is-in) { --line: rgba(59, 0, 8, 0); }
-.js .about-row,
-.js .about-tags li,
-.js .about-exp li,
-.js .about-footer { transition: border-color 1.2s ease 0.2s; }
+.js .about-tags li { transition: border-color 1.2s ease 0.2s; }
+.page-about .line path { transition: stroke 1.2s ease 0.2s; }
 
 /* With JavaScript on: boxes start hidden and fade + drift in with their block */
 .js .reveal .ph {

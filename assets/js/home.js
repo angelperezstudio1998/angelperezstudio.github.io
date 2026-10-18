@@ -20,7 +20,7 @@
 //   3. THE BIG LOGO ..... scroll, hover, resting motion, water drop, intro
 //   4. TIMELINE ......... what each scroll position looks like
 //   5. SCROLL + MENU .... smooth scroll feel, menu jumps
-//   6. HOVER EXTRAS ..... work-list arrows, bending divider lines
+//   6. HOVER EXTRAS ..... work-list arrows (the bending lines are in core.js)
 //   7. START-UP ......... hooking into core.js, the intro, the clock
 //   8. PHONES ........... the simpler scrolling version for small screens
 //
@@ -138,35 +138,12 @@ const heroTextPieces = scenePieces(heroScene);
 const workPieces = scenePieces(workScene);
 const contactPieces = scenePieces(contactScene);
 
-// The divider lines in the work list: each one is a single continuous line
-// (an SVG path) with bend points along it. When you hover, the points near
-// the mouse are pushed away from it, so the line bends smoothly around the
-// mouse like a string, then slowly springs back. On scroll the points are
-// carried by the same liquid wind as the text. Drawn by renderLine (section 6).
-const LINE = {
-  points: 48,      // bend points per line (more = smoother curve)
-  push: 16,        // how far the line bends away from the mouse (px)
-  reach: 140,      // how far along the line the bend spreads (px)
-  room: 30,        // space above and below the line for bending (px)
-};
-const svgNS = 'http://www.w3.org/2000/svg';
-const lines = [...document.querySelectorAll('.section-head, .work-item')].map((host) => {
-  const svg = document.createElementNS(svgNS, 'svg');
-  svg.setAttribute('class', 'line');
-  svg.setAttribute('aria-hidden', 'true');
-  const path = document.createElementNS(svgNS, 'path');
-  svg.append(path);
-  host.append(svg);
-  return {
-    host, svg, path,
-    x: 0, y: 0, w: 0,                                   // where it sits on screen (set by measureLines)
-    pts: Array.from({ length: LINE.points }, () => ({
-      hy: 0,           // hover bend (px), eases toward its target
-      wx: 0, wy: 0,    // wind offset from the scroll (px)
-    })),
-    moving: false, last: '',
-  };
-});
+// The divider lines: the work list's and the footer's, each one bending line
+// (core.js, "Lines"). They only bend while their scene is on screen, and are
+// carried by the same wind as the text on scroll (the timeline, section 4).
+const sceneLive = (scene) => () => scene.lastVisibility !== 'hidden';  // (the line's own element isn't needed)
+const workLines = makeLines('.section-head, .work-item', 'bottom', sceneLive(workScene));
+const contactLines = makeLines('.scene--contact .contact__bottom', 'top', sceneLive(contactScene));
 
 // Work list arrows: flow in on the wind when you hover a row, flow out when you leave
 const arrowPieces = [...document.querySelectorAll('.work-item__arrow')].map((el) => {
@@ -491,7 +468,7 @@ function update(y) {
       if (pWorkOut > 0) place(pc, pieceProgress(pWorkOut, 1 - pc.order));
       else place(pc, 1 - pieceProgress(pWorkIn, pc.order), true);
     });
-    windLines(pWorkIn, pWorkOut);
+    windLines(workLines, pWorkIn, pWorkOut);
     arrowPieces.forEach((pc) => {
       pc.scrollIn = pWorkOut <= 0;
       pc.scrollAmt = pc.scrollIn ? 1 - pieceProgress(pWorkIn, pc.order) : pieceProgress(pWorkOut, 1 - pc.order);
@@ -503,6 +480,7 @@ function update(y) {
   // Scene 3: contact flows in
   if (progressChanged('contact', pContact)) {
     contactPieces.forEach((pc) => place(pc, 1 - pieceProgress(pContact, pc.order), true));
+    windLines(contactLines, pContact);
   }
   setScene(contactScene, pContact > 0, pContact);
 }
@@ -595,7 +573,7 @@ window.addEventListener('hashchange', () => {
 });
 
 // =========================================================================
-// 6. HOVER EXTRAS — work-list arrows, bending divider lines
+// 6. HOVER EXTRAS — work-list arrows
 // =========================================================================
 
 // ---- Work list arrows ----
@@ -615,76 +593,6 @@ arrowPieces.forEach((pc) => {
   item.addEventListener('focus', show(1));   // keyboard users get the arrow too
   item.addEventListener('blur', show(0));
 });
-
-// ---- Divider lines: one bending line each ----
-
-function measureLines() {
-  lines.forEach((ln) => {
-    const r = ln.host.getBoundingClientRect();
-    ln.x = r.left;
-    ln.y = r.bottom - 0.5 + Site.offsetY();  // where the old 1px border was (page coordinates on phones)
-    ln.w = r.width;
-    ln.svg.setAttribute('viewBox', `0 ${-LINE.room} ${Math.max(1, ln.w)} ${LINE.room * 2}`);
-    ln.last = '';
-  });
-}
-
-// Draw a line through its bend points (only touches the page when it changed)
-function renderLine(ln) {
-  const n = ln.pts.length - 1;
-  let d = '';
-  ln.pts.forEach((pt, k) => {
-    const x = (ln.w * k) / n + pt.wx;
-    const y = pt.hy + pt.wy;
-    d += `${k ? 'L' : 'M'}${round2(x)} ${round2(y)}`;
-  });
-  if (d !== ln.last) { ln.path.setAttribute('d', d); ln.last = d; }
-}
-
-// Scroll: carry each bend point with the wind, like the letters (called by the timeline)
-function windLines(pIn, pOut) {
-  lines.forEach((ln) => {
-    const n = ln.pts.length - 1;
-    ln.pts.forEach((pt, k) => {
-      const fake = { cx: ln.x + (ln.w * k) / n, cy: ln.y };  // this point's spot on screen
-      const order = (fake.cx / window.innerWidth) * 0.75 + (fake.cy / window.innerHeight) * 0.25;
-      const amount = pOut > 0 ? pieceProgress(pOut, 1 - order) : 1 - pieceProgress(pIn, order);
-      const off = reduceMotion ? STILL : windOffset(fake, amount, WIND.drift, pOut <= 0);
-      pt.wx = off.x;
-      pt.wy = off.y;
-    });
-    renderLine(ln);
-  });
-}
-
-// Hover: bend the points near the mouse away from it. Returns true while moving.
-function bendLines() {
-  let busy = false;
-  const live = workScene.lastVisibility !== 'hidden';
-  lines.forEach((ln) => {
-    const n = ln.pts.length - 1;
-    const dy = ln.y - pointer.sy - Site.offsetY();  // which side of the line the mouse is on
-    const side = dy >= 0 ? 1 : -1;              // bend away from it
-    const near = pointer.active && live && !reduceMotion && Math.abs(dy) < HOVER.radius;
-    let moving = false;
-    ln.pts.forEach((pt, k) => {
-      let target = 0;
-      if (near) {
-        const dx = ln.x + (ln.w * k) / n - pointer.sx;
-        const d = Math.hypot(dx / LINE.reach, dy / HOVER.radius);  // smooth falloff along and across the line
-        target = side * LINE.push * clamp01(1 - d) ** 2;
-      }
-      const rate = Math.abs(target) > Math.abs(pt.hy) ? HOVER.speed : HOVER.settle;  // out slowly, back even slower
-      pt.hy += (target - pt.hy) * rate;
-      if (Math.abs(target - pt.hy) > 0.02 || target !== 0) moving = true;
-      else pt.hy = target;
-    });
-    if (moving || ln.moving) renderLine(ln);
-    ln.moving = moving;
-    if (moving) busy = true;
-  });
-  return busy;
-}
 
 // Run by core.js's hover loop each frame; true while anything is still moving
 function arrowsFrame() {
@@ -722,7 +630,6 @@ Site.onMeasure.push(() => {
   measureLogo(heroLogoPieces, true);   // big logo: right end goes first
   [heroTextPieces, workPieces, contactPieces, arrowPieces].forEach(measureOrder);
   heroLogoPieces.forEach((pc) => { pc.hoverScale = 1; });  // the big logo gets the full hover
-  measureLines();
 });
 Site.onRedraw.push(() => {
   lastProgress.clear();  // positions (or lighter mode) changed: every group must redraw
@@ -730,7 +637,7 @@ Site.onRedraw.push(() => {
 });
 window.addEventListener('scroll', startTick, { passive: true });
 }
-Site.onHoverFrame.push(bendLines, arrowsFrame);
+Site.onHoverFrame.push(arrowsFrame);  // (the lines bend by themselves, core.js)
 Site.onPointer.push(() => { if (hero.progress < 1) wakeHero(); });
 Site.onLite.push((lite) => {
   heroLogoPieces.forEach((pc) => {     // the soft trail on the logo drops
@@ -798,14 +705,12 @@ function startPhone() {
   Site.onMeasure.push(() => {
     measureLogo(heroLogoPieces, true);
     [heroTextPieces, workPieces, contactPieces].forEach(measureOrder);
-    measureLines();
     creamLine = workScene.offsetTop;
     document.body.style.background =
       `linear-gradient(${COLOR.burgundy} ${creamLine}px, ${COLOR.cream} ${creamLine}px)`;  // two flat colors, clean edge
   });
   Site.onRedraw.push(() => {
     [...workPieces, ...contactPieces].forEach((pc) => place(pc, 0));  // everything simply in place
-    lines.forEach(renderLine);
     renderHeroLogo();
     phoneHeader(true);
   });
