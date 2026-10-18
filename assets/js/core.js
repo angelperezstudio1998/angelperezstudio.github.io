@@ -713,6 +713,7 @@ function tuneSmallText(pieces) {
   pieces.filter((pc) => pc.el.closest('.contact__email')).forEach((pc) => { pc.blurDamp = HOVER.emailBlur; });
 }
 tuneSmallText(navPieces);
+navPieces.forEach((pc) => { pc.sharp = true; });  // the menu's letters never blur (its only blur is the frosted pill behind the whole menu)
 headerPieces.forEach((pc) => { pc.hoverDamp = HOVER.menu; pc.sharp = true; });  // the small logo: gentle push, never blurred
 Site.hoverPieces.push(...headerPieces, ...navPieces);
 
@@ -1731,7 +1732,7 @@ function followPattern() {
 // is blurred. Big titles (data-wind="letters") are readable enough without it,
 // and so is the small logo (it's solid shapes, and stays sharp).
 // (Blurring and glass are skipped entirely in lighter mode.)
-const GLASS_SELECTOR = '[data-wind]:not([data-wind="letters"]) .word, .site-nav .word';
+const GLASS_SELECTOR = '[data-wind]:not([data-wind="letters"]) .word';  // (not the menu: it has one frosted pill, style.css section 5)
 let glassHosts = [];  // found in Site.start(), once the page has split its text into words
 function collectGlass() {
   glassHosts = [...document.querySelectorAll(GLASS_SELECTOR)]

@@ -177,7 +177,8 @@ ul { padding: 0; list-style: none; }
 .grain { display: none; }
 
 /* ---------- 4. Glass: a soft blur behind text ----------
-   Every word of the smaller text (labels, menu, links) can sit on its own
+   Every word of the smaller text (labels, links; not the menu, which has one
+   frosted pill behind it, section 5) can sit on its own
    small pane of "frosted glass": whatever is behind it (the drop pattern, ripples) is
    blurred, so the text stays readable. The pane has soft, feathered edges, so
    you never see a box, and it fades with its scene (--reveal).
@@ -195,8 +196,7 @@ ul { padding: 0; list-style: none; }
   --glass-pad-x: 0.18em;                     /* and to the sides */
 }
 .js .scene--work,
-.js .scene--contact,
-.is-light .site-header {
+.js .scene--contact {
   --glass-tint: rgba(214, 199, 174, 0.32);   /* on cream */
 }
 
@@ -209,15 +209,14 @@ ul { padding: 0; list-style: none; }
    the logos (solid shapes, always sharp). Words don't move themselves (only their letters
    do), so their panes stay steady. core.js uses the same list
    (GLASS_SELECTOR, core.js section 9). */
-.js [data-wind]:not([data-wind="letters"]) .word,
-.js .site-nav .word {
+.js [data-wind]:not([data-wind="letters"]) .word {
   position: relative;
   isolation: isolate;                        /* keeps the pane right behind its own word */
 }
 .js .glass::before {
   content: "";
   position: absolute;
-  /* Small text (menu, labels) gets at least 6px of glass around it */
+  /* Small text (labels) gets at least 6px of glass around it */
   inset: calc(-1 * max(var(--glass-pad-y), 6px)) calc(-1 * max(var(--glass-pad-x), 6px));
   z-index: -1;
   pointer-events: none;
