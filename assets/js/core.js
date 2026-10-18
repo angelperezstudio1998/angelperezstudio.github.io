@@ -1018,8 +1018,10 @@ function windLines(list, pIn, pOut = 0) {
     const n = ln.pts.length - 1;
     ln.pts.forEach((pt, k) => {
       const fake = { cx: ln.x + (ln.w * k) / n, cy: ln.y };  // this point's spot
-      const order = (fake.cx / window.innerWidth) * 0.75 + ((fake.cy - Site.offsetY()) / window.innerHeight) * 0.25;
-      const amount = pOut > 0 ? pieceProgress(pOut, 1 - order) : 1 - pieceProgress(pIn, order);
+      // (kept between 0 and 1: a line far down the page would otherwise count
+      // as "not there yet" even once its block is fully in, and stay bent)
+      const order = clamp01((fake.cx / window.innerWidth) * 0.75 + ((fake.cy - Site.offsetY()) / window.innerHeight) * 0.25);
+      const amount = pOut > 0 ? pieceProgress(pOut, 1 - order) : pIn >= 1 ? 0 : 1 - pieceProgress(pIn, order);
       const off = reduceMotion || amount <= 0 ? STILL : windOffset(fake, amount, WIND.drift, pOut <= 0);
       pt.wx = off.x;
       pt.wy = off.y;
