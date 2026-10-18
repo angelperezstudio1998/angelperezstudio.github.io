@@ -663,6 +663,14 @@ const Site = {
   start: null,            // set in section 10
 };
 
+// The page's scroll position, kept up to date by a scroll listener. (Reading
+// window.scrollY right after moving pieces makes the browser redo the page
+// layout first; doing that for every piece in every frame made scrolling slow.)
+// Scrolling pages use it as Site.offsetY.
+let lastScrollY = window.scrollY;
+window.addEventListener('scroll', () => { lastScrollY = window.scrollY; }, { passive: true });
+const pageScroll = () => lastScrollY;
+
 // A piece's scroll offset: pieces remember their place on the PAGE on
 // scrolling pages, except those in the fixed top bar, which never move
 const offsetFor = (pc) => (pc && pc.fixed ? 0 : Site.offsetY());
@@ -719,12 +727,12 @@ Site.hoverPieces.push(...headerPieces, ...navPieces);
 
 
 // ---- The menu condenses into a ring while scrolling down (settings in FOLD) ----
-// First all three words are squashed flat, as if sandwiched, into lines
-// where they stand. Then the lines are reeled in like a chain onto a spool:
-// they slide right together, and each one dips under the ring and is wound
-// onto it, the ring turning counterclockwise as it reels them in. Wound up, each word shrinks to one
-// bar (and the space between words to a small gap), so the three bars end up
-// evenly spaced around the circle. Opening plays it backward: the ring turns
+// First all three words are pressed flat, as if sandwiched, into lines that
+// settle at the height of the ring's bottom edge. Then the lines are reeled
+// in like a belt onto a wheel: they slide right together and run straight
+// onto the ring, which turns counterclockwise as it reels them in. Wound up,
+// each word shrinks to one bar (and the space between words to a small gap),
+// so the three bars end up evenly spaced around the circle. Opening plays it backward: the ring turns
 // clockwise and the words roll back out.
 // The lines are drawn on one SVG over the top bar (.site-morph); the button
 // (.site-burger) is an invisible hit area on top of the ring.
@@ -846,40 +854,43 @@ function drawFold() {
   });
 }
 
-// ---- Frosted backgrounds (small logo, menu ring): only while something is behind ----
-// Checks a few spots over the logo and over the ring (and a little around
-// them) for page content: text, a box, an image. While there is some, <html>
-// gets .is-behind (logo) or .is-behind-ring (ring) and that frosted shape
-// fades in (style.css section 5; both also show while the mouse is over
-// them). Checked at most once a frame, and once more after scrolling stops.
-const BEHIND = { near: 18 };  // how close content has to come (px; the frosted shapes reach a little past the logo and ring)
-const INK = 'p, h1, h2, h3, li, a, span, img, video, .ph';  // what counts as content
+// ---- Frosted backgrounds (logo, menu, ring): only while something is behind ----
+// While page content (text, a box, an image) is within BEHIND.near px of the
+// small logo, the menu or the ring, <html> gets .is-behind / .is-behind-nav /
+// .is-behind-ring and that frosted shape fades in (style.css section 5; each
+// also shows while the mouse is over it). For speed, the content's boxes and
+// the top bar's boxes are measured once (measureBehind, at start and after
+// resizes); while scrolling it's only a little math, at most once a frame.
+const BEHIND = { near: 18 };  // how close content has to come (px; the frosted shapes reach a little past the logo, menu and ring)
+const CONTENT = 'main p, main h1, main h2, main h3, main li, main a, main img, main video, main .ph';  // what counts as content
+let contentBoxes = [];        // { scene, block, l, r, t, b }: page coordinates on scrolling pages
+const barBoxes = {};          // the logo's, the menu's and the ring's boxes (the top bar never moves)
 let behindQueued = false;
-let behindLater = 0;  // one more check after scrolling stops (things flowing in may still be moving)
 
-// Is any page content within BEHIND.near px of this element?
-function contentBehind(target) {
-  const r = target.getBoundingClientRect();
-  const m = BEHIND.near;
-  for (let i = 0; i <= 6; i++) {
-    for (let j = 0; j <= 2; j++) {
-      const x = r.left - m + ((r.width + 2 * m) * i) / 6;
-      const y = r.top - m + ((r.height + 2 * m) * j) / 2;
-      if (x < 0 || y < 0) continue;
-      for (const el of document.elementsFromPoint(x, y)) {
-        if (el.closest('.site-header')) continue;
-        if (el.closest('main') && el.matches(INK)) return true;
-      }
-    }
+function measureBehind() {
+  const off = Site.offsetY();
+  contentBoxes = [...document.querySelectorAll(CONTENT)].map((el) => {
+    const r = el.getBoundingClientRect();
+    return { scene: el.closest('.scene'), block: el.closest('.reveal'), l: r.left, r: r.right, t: r.top + off, b: r.bottom + off };
+  }).filter((c) => c.r > c.l);
+  for (const [name, el] of [['logo', headerLogo], ['nav', siteNav], ['ring', burger]]) {
+    if (el) barBoxes[name] = el.getBoundingClientRect();
   }
-  return false;
+}
+
+// Is any page content that's showing within BEHIND.near px of this top-bar box?
+function contentBehind(box) {
+  if (!box) return false;
+  const m = BEHIND.near, off = Site.offsetY();
+  return contentBoxes.some((c) =>
+    !(c.scene && c.scene.lastVisibility === 'hidden') && !(c.block && !c.block.classList.contains('is-in')) &&  // (hidden scenes, blocks not in yet)
+    c.l < box.right + m && c.r > box.left - m && c.t - off < box.bottom + m && c.b - off > box.top - m);
 }
 
 function updateBehind() {
-  root.classList.toggle('is-behind', !!headerLogo && root.classList.contains('is-scrolled') && contentBehind(headerLogo));
-  root.classList.toggle('is-behind-ring', !!burger && fold.t > 0 && contentBehind(burger));
-  root.classList.toggle('is-behind-nav', fold.t < 1 && contentBehind(siteNav));
-  syncTopColor();
+  root.classList.toggle('is-behind', root.classList.contains('is-scrolled') && contentBehind(barBoxes.logo));
+  root.classList.toggle('is-behind-ring', fold.t > 0 && contentBehind(barBoxes.ring));
+  root.classList.toggle('is-behind-nav', fold.t < 1 && contentBehind(barBoxes.nav));
 }
 
 // Phone browsers color their own top bar (behind the clock) and the area
@@ -889,14 +900,13 @@ function updateBehind() {
 // the page and relies on the body's background being the page's own.)
 const themeMeta = document.querySelector('meta[name="theme-color"]') || document.head.appendChild(Object.assign(document.createElement('meta'), { name: 'theme-color' }));
 function syncTopColor() {
-  const cream = root.classList.contains('is-light') || Site.bg() === 'cream';
-  const color = cream ? COLOR.cream : COLOR.burgundy;
+  const color = root.classList.contains('is-light') || Site.bg() === 'cream' ? COLOR.cream : COLOR.burgundy;
   if (themeMeta.content !== color) themeMeta.content = color;
 }
+new MutationObserver(syncTopColor).observe(root, { attributes: true, attributeFilter: ['class'] });  // (follows .is-light as it changes)
 
+// Checks at most once a frame
 function checkBehindLogo() {
-  clearTimeout(behindLater);
-  behindLater = setTimeout(updateBehind, 600);
   if (behindQueued) return;
   behindQueued = true;
   requestAnimationFrame(() => {
@@ -1835,13 +1845,16 @@ let glassReady = false;  // set once everything is measured
 // Measure every piece in its resting place and redraw everything.
 // Runs at start, when fonts finish loading, and after the window is resized.
 function remeasure() {
+  lastScrollY = window.scrollY;          // (the page may have been scrolled from code)
   measureLogo(headerPieces, false);    // small logo: left end arrives first
   measureOrder(navPieces);
   Site.onMeasure.forEach((fn) => fn());  // the page measures its own pieces
   measureLines();
   measureFold();
   measureGlass();
-  checkBehindLogo();                     // is anything behind the small logo right now?
+  measureBehind();                       // where the page content and the top bar are…
+  checkBehindLogo();                     // …so: is anything behind the logo, menu or ring right now?
+  syncTopColor();                        // the phone browser's top color
   Site.onRedraw.forEach((fn) => fn());   // the page redraws its pieces
   navPieces.forEach(renderPiece);        // the menu (it may be mid-intro)
   updateGlass();

@@ -8,8 +8,9 @@
 // is split into letters by core.js's tools, and each block (class="reveal")
 // flows in on the liquid wind the first time it comes into view, using the
 // same burn front as everything else. Placeholder boxes (class="ph") fade in
-// with their block (style.css, "About page"). On phones nothing animates:
-// the text, boxes and top bar are simply there and links open right away.
+// with their block (style.css, "About page"). On phones the blocks don't flow in:
+// the text, boxes and top bar are simply there and links open right away
+// (only the menu turning into the ring and the tap ripples move).
 //
 //   1. SETTINGS ......... timing of the blocks flowing in
 //   2. PIECES ........... the blocks and their letters
@@ -39,7 +40,7 @@ const ABOUT = {
 // The page's own coordinates: pieces remember where they rest on the PAGE,
 // so the hover still finds them after scrolling (core.js adds the scroll)
 Site.scrolls = true;
-Site.offsetY = () => window.scrollY;
+Site.offsetY = pageScroll;  // (core.js: the scroll position, read once per scroll)
 Site.bg = () => 'cream';
 
 // The divider lines: the same bending lines as the home page (core.js,

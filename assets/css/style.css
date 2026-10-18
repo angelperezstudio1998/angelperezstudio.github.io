@@ -7,7 +7,7 @@
    HOW THIS FILE IS ORGANIZED
      1. Design tokens ....... colors, fonts, spacing (change once, updates everywhere)
      2. Basic reset ......... sensible defaults
-     3. Background layers ... canvas, film grain
+     3. Background layers ... canvases (the film grain is in the page background)
      4. Glass ............... the soft blur behind text, so the pattern never hurts reading
      5. Top bar ............. small logo + menu
      6. Scenes .............. how the scroll "scenes" stack on one screen
@@ -37,7 +37,8 @@
    LAYERS, BACK TO FRONT
      page background (color + film grain, set by core.js) → canvases (.bg, z -2:
      cream sweep, drop pattern around the mouse, ripples)
-     → scenes (.stage, z 1, with glass behind text) → top bar (z 10)
+     → scenes (.stage, z 1, with glass behind small text) → top bar (z 10, with
+     frosted shapes behind the logo, menu and ring)
    ========================================================================= */
 
 /* ---------- 1. Design tokens (colors, fonts, spacing) ----------
@@ -171,10 +172,6 @@ ul { padding: 0; list-style: none; }
   display: block;
 }
 
-/* Film grain: now part of the page background (made by core.js, setting
-   GRAIN), so it costs nothing while things move. This old full-screen layer
-   is switched off. */
-.grain { display: none; }
 
 /* ---------- 4. Glass: a soft blur behind text ----------
    Every word of the smaller text (labels, links; not the menu, which has one

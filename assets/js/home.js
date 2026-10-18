@@ -9,9 +9,10 @@
 // in and blows away on the liquid wind from core.js.
 //
 // PHONES (screens narrower than PHONE.width) get a calm, simple version: the
-// page scrolls normally, top to bottom. The only animation is the logo
-// forming out of a water drop when the page first opens; everything else is
-// simply there (taps still make a ripple in the background). The page is
+// page scrolls normally, top to bottom. The only animations are the logo
+// forming out of a water drop when the page first opens, the menu turning
+// into the ring (core.js) and the ripples when you tap; everything else is
+// simply there. The page is
 // burgundy behind the logo and cream from the work list down (section 8). The class "is-phone"
 // on <html> is set in index.html before the page shows, so the CSS knows too.
 //
@@ -693,7 +694,7 @@ window.matchMedia(`(max-width: ${PHONE.width - 0.02}px)`).addEventListener('chan
 function startPhone() {
   Site.scrolls = true;
   Site.ownBackground = true;  // core.js leaves the page background to us
-  Site.offsetY = () => window.scrollY;
+  Site.offsetY = pageScroll;  // (core.js: the scroll position, read once per scroll)
   Site.isGliding = () => {
     if (phoneGlideTo !== null && Math.abs(window.scrollY - phoneGlideTo) < 2) phoneGlideTo = null;  // arrived
     return phoneGlideTo !== null;
