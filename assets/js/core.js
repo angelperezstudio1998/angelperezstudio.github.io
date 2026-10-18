@@ -131,13 +131,13 @@ const INTRO_DRIFT = 70;  // how far it flows in from (px)
 // The menu condenses while you scroll down: the words are squashed flat into
 // lines, and the lines are reeled onto a ring like a chain onto a spool (three
 // bars with small gaps), the ring turning counterclockwise. Scrolling up (or pressing
-// the ring) plays it backward. Phones swap them instantly (nothing moves on phones).
+// the ring) plays it backward. It plays on every screen, phones too (Angel's
+// choice); only "reduce motion" settings get an instant swap.
 const FOLD = {
   time: 1000,      // how long the whole change takes (ms)
   squash: 0.3,     // how much of that time the words take to get squashed flat into lines
   radius: 12,      // the ring's size (px; the button in style.css is this + 10px on each side, 44px)
   gap: 30,         // gap between the ring's bars (degrees; the round ends fill a little of it)
-  dip: 16,         // how long the line's dip down under the ring is (px)
   settle: 0.2,     // how much of the time the meeting point takes to settle at the ring
   after: 80,       // never condensed this close to the top of the page (px)
   scroll: 12,      // how far you scroll one way before it changes (px)
@@ -764,7 +764,7 @@ function setFold(on) {
   siteNav.inert = on;            // the hidden menu can't be clicked or tabbed to…
   burger.inert = !on;            // …and neither can the hidden button
   if (glassReady) updateGlass(); // the menu's glass goes and comes with it
-  if (reduceMotion || smallScreen) { fold.t = on ? 1 : 0; drawFold(); return; }  // phones: an instant swap
+  if (reduceMotion) { fold.t = on ? 1 : 0; drawFold(); return; }  // "reduce motion": an instant swap
   if (!fold.running) { fold.running = true; fold.last = performance.now(); requestAnimationFrame(foldFrame); }
 }
 
@@ -800,27 +800,27 @@ function chainAt(x) {
 function drawFold() {
   if (!bars.length) return;
   const t = fold.t, r = FOLD.radius;
-  // First every word is squashed flat, as if sandwiched, into a line where it stands
+  const cy = ring.y;
+  // First every word is squashed flat, as if pressed down from above: it
+  // flattens into a line that settles at the height of the ring's bottom edge
   const squash = ease(segment(t, [0, FOLD.squash]));
-  // Then the lines are reeled in: how far the chain has moved right (when it's
+  const lineY = (bar) => bar.y + (cy + r - bar.y) * squash;
+  // Then the lines are reeled in, running straight onto the bottom of the ring
+  // like a belt onto a wheel: how far the chain has moved right (when it's
   // all in, the left end of the first word has just reached the ring)
-  const reel = segment(t, [FOLD.squash * 0.7, 1]);
+  const reel = segment(t, [FOLD.squash, 1]);
   const move = (ring.x - bars[bars.length - 1].x0) * easeInOut(reel);
   // Where the chain meets the ring (straight under its center). It starts just
   // right of the menu, so nothing is reeled in at rest, and moves to the ring
   // quickly as the lines start sliding (the ring is still empty then)
-  const meet = ring.x + Math.max(0, bars[0].x1 + FOLD.dip + 2 - ring.x) * (1 - ease(segment(reel, [0, FOLD.settle])));
+  const meet = ring.x + Math.max(0, bars[0].x1 + 2 - ring.x) * (1 - ease(segment(reel, [0, FOLD.settle])));
   const wound = chainAt(meet - move);                     // how much chain is on the ring
-  const cy = ring.y;
   burger.style.opacity = String(round2(ease(segment(t, [0.45, 0.9]))));  // its frosted disc fades in with the ring
 
   // A spot that rests at x on the menu: where is it now?
   const spot = (x, bar) => {
     const p = x + move;
-    if (p <= meet) {                                      // on its way: straight, then dipping under the ring
-      const dip = ease(segment(p, [meet - FOLD.dip, meet]));
-      return [p, bar.y + (cy + r - bar.y) * dip];
-    }
+    if (p <= meet) return [p, lineY(bar)];                // on its way: a straight line
     const a = Math.PI / 2 - (wound - chainAt(x)) / r;     // wound on: further round the ring, counterclockwise
     return [meet + r * Math.cos(a), cy + r * Math.sin(a)];
   };
@@ -836,10 +836,10 @@ function drawFold() {
     }
     if (d !== bar.last) { bar.path.setAttribute('d', d); bar.last = d; }
     bar.path.style.opacity = String(round2(segment(squash, [0.55, 1])));  // the line shows as the word gets flat
-    // The word: squashed flat (and spread a little sideways), sliding with the chain, gone once it's a line
+    // The word: pressed down flat (and spread a little sideways), sliding with the chain, gone once it's a line
     const s = bar.link.style;
     s.transform = squash > 0
-      ? `translateX(${round2(move)}px) scale(${round2(1 + 0.08 * squash)}, ${round2(1 - 0.94 * squash)})`
+      ? `translate(${round2(move)}px, ${round2(lineY(bar) - bar.y)}px) scale(${round2(1 + 0.08 * squash)}, ${round2(1 - 0.94 * squash)})`
       : '';
     s.opacity = squash > 0 ? String(round2(1 - segment(squash, [0.6, 1]))) : '';
     bar.pieces.forEach((pc) => { pc.hidden = squash > 0; });  // no hover while it's changing
