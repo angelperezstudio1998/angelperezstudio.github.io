@@ -102,7 +102,6 @@ const isPhone = root.classList.contains('is-phone');
 // (phone state, used in section 8)
 let creamLine = 0;           // page height where burgundy turns cream (the top of the work list)
 let phoneGlideTo = null;     // where a menu jump is scrolling to (null = not jumping)
-const headerEl = document.querySelector('.site-header');
 
 // =========================================================================
 // 2. PIECES — finding everything on the home page that moves
@@ -719,11 +718,9 @@ function startPhone() {
     window.addEventListener(type, () => { phoneGlideTo = null; }, { passive: true }));
 }
 
-// The top bar: its background matches the page right behind it, so the color
-// edge slides through it as you scroll (CSS). Once the cream reaches the
-// middle of the bar, the menu turns burgundy and the small logo appears.
+// The top bar (no background): once the cream reaches the middle of the bar,
+// the menu turns burgundy and the small logo appears
 function phoneHeader(force = false) {
-  headerEl.style.setProperty('--edge', `${Math.round(creamLine - window.scrollY)}px`);
   const light = window.scrollY + 35 > creamLine;
   if (light === root.classList.contains('is-light') && !force) return;
   root.classList.toggle('is-light', light);

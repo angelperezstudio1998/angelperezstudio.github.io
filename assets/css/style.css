@@ -26,7 +26,8 @@
      - The scripts set these on <html>: .is-light (the cream has reached the top,
        so the menu turns burgundy), .is-scrolled (the small logo is in),
        .is-folded (the top bar is condensed: menu button instead of the menu),
-       .is-behind (page content is behind the small logo: it gets frosted glass),
+       .is-behind / .is-behind-ring (page content is behind the small logo / the
+       menu ring: it gets frosted glass),
        .is-drawing (mouse held down: no text selection), .is-lite (lighter
        mode for slower devices: no glass blur), .is-entering (a page that
        opens mid-transition stays hidden for its first frame).
@@ -313,16 +314,29 @@ ul { padding: 0; list-style: none; }
   padding: 0;
   border: 0;
   border-radius: 50%;
-  /* A soft frosted disc behind the ring (fades in with it, core.js) */
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+/* A soft frosted disc behind the ring, only while something on the page is
+   behind it (core.js adds .is-behind-ring) or the mouse is over it, and only
+   once the ring has formed (--ring, set by core.js) */
+.site-burger::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
   background: rgba(59, 0, 8, 0.24);
   -webkit-backdrop-filter: blur(10px) saturate(1.4);
   backdrop-filter: blur(10px) saturate(1.4);
   opacity: 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.35s ease;
 }
-.is-light .site-burger { background: rgba(214, 199, 174, 0.42); }
-.is-lite .site-burger { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.is-light .site-burger::before { background: rgba(214, 199, 174, 0.42); }
+.is-behind-ring .site-burger::before,
+.site-burger:hover::before { opacity: var(--ring, 0); }
+.is-lite .site-burger::before { -webkit-backdrop-filter: none; backdrop-filter: none; }
 .site-burger:focus { outline: none; }
 .site-burger:focus-visible { outline: 1px solid var(--cream); outline-offset: -4px; }
 .is-light .site-burger:focus-visible { outline-color: var(--burgundy); }
@@ -700,19 +714,7 @@ ul { padding: 0; list-style: none; }
    burgundy down to the work list and cream below it (painted by home.js),
    so the ripples on the canvas behind show everywhere */
 .js.is-phone .scene--contact { min-height: 100vh; min-height: 100svh; }
-/* The page scrolls under the top bar: a soft fade of the color behind it */
-.js.is-phone .site-header::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 -24px 0;
-  z-index: -1;
-  pointer-events: none;
-  /* Matches the page right behind it: burgundy above the color edge, cream
-     below (home.js moves --edge as you scroll), fading out at the bottom */
-  background: linear-gradient(var(--burgundy) var(--edge, 100%), var(--cream) var(--edge, 100%));
-  -webkit-mask-image: linear-gradient(#000 50%, transparent);
-  mask-image: linear-gradient(#000 50%, transparent);
-}
+/* The top bar has no background on phones either: the page scrolls under it */
 
 /* Small-screen layout tweaks */
 @media (max-width: 600px) {

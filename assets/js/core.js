@@ -764,7 +764,7 @@ function setFold(on) {
   siteNav.inert = on;            // the hidden menu can't be clicked or tabbed to…
   burger.inert = !on;            // …and neither can the hidden button
   if (glassReady) updateGlass(); // the menu's glass goes and comes with it
-  if (reduceMotion) { fold.t = on ? 1 : 0; drawFold(); return; }  // "reduce motion": an instant swap
+  if (reduceMotion) { fold.t = on ? 1 : 0; drawFold(); checkBehindLogo(); return; }  // "reduce motion": an instant swap
   if (!fold.running) { fold.running = true; fold.last = performance.now(); requestAnimationFrame(foldFrame); }
 }
 
@@ -775,7 +775,7 @@ function foldFrame(now) {
   fold.t = clamp01(fold.t + (fold.on ? step : -step));
   drawFold();
   if (fold.t !== (fold.on ? 1 : 0)) requestAnimationFrame(foldFrame);
-  else fold.running = false;
+  else { fold.running = false; checkBehindLogo(); }  // the ring is done: is anything behind it?
 }
 
 // Wound onto the ring, the chain is shorter: each word becomes one bar and
@@ -815,7 +815,7 @@ function drawFold() {
   // quickly as the lines start sliding (the ring is still empty then)
   const meet = ring.x + Math.max(0, bars[0].x1 + 2 - ring.x) * (1 - ease(segment(reel, [0, FOLD.settle])));
   const wound = chainAt(meet - move);                     // how much chain is on the ring
-  burger.style.opacity = String(round2(ease(segment(t, [0.45, 0.9]))));  // its frosted disc fades in with the ring
+  burger.style.setProperty('--ring', String(round2(ease(segment(t, [0.45, 0.9])))));  // its frosted disc can only show as the ring forms
 
   // A spot that rests at x on the menu: where is it now?
   const spot = (x, bar) => {
@@ -846,19 +846,20 @@ function drawFold() {
   });
 }
 
-// ---- The small logo's frosted background: only while something is behind it ----
-// Checks a few spots over the logo's frosted shape (and a little around it)
-// for page content: text, a box, an image. While there is some, <html> gets
-// .is-behind and the frosted shape fades in (style.css section 5; it also
-// shows while the mouse is over the logo). Checked at most once a frame.
-const BEHIND = { near: 18 };  // how close content has to come (px; the frosted shape itself reaches 14px past the logo)
+// ---- Frosted backgrounds (small logo, menu ring): only while something is behind ----
+// Checks a few spots over the logo and over the ring (and a little around
+// them) for page content: text, a box, an image. While there is some, <html>
+// gets .is-behind (logo) or .is-behind-ring (ring) and that frosted shape
+// fades in (style.css section 5; both also show while the mouse is over
+// them). Checked at most once a frame, and once more after scrolling stops.
+const BEHIND = { near: 18 };  // how close content has to come (px; the frosted shapes reach a little past the logo and ring)
 const INK = 'p, h1, h2, h3, li, a, span, img, video, .ph';  // what counts as content
 let behindQueued = false;
 let behindLater = 0;  // one more check after scrolling stops (things flowing in may still be moving)
 
-function contentBehindLogo() {
-  if (!headerLogo || !root.classList.contains('is-scrolled')) return false;  // (the logo isn't showing)
-  const r = headerLogo.getBoundingClientRect();
+// Is any page content within BEHIND.near px of this element?
+function contentBehind(target) {
+  const r = target.getBoundingClientRect();
   const m = BEHIND.near;
   for (let i = 0; i <= 6; i++) {
     for (let j = 0; j <= 2; j++) {
@@ -874,14 +875,19 @@ function contentBehindLogo() {
   return false;
 }
 
+function updateBehind() {
+  root.classList.toggle('is-behind', !!headerLogo && root.classList.contains('is-scrolled') && contentBehind(headerLogo));
+  root.classList.toggle('is-behind-ring', !!burger && fold.t > 0 && contentBehind(burger));
+}
+
 function checkBehindLogo() {
   clearTimeout(behindLater);
-  behindLater = setTimeout(() => root.classList.toggle('is-behind', contentBehindLogo()), 600);
+  behindLater = setTimeout(updateBehind, 600);
   if (behindQueued) return;
   behindQueued = true;
   requestAnimationFrame(() => {
     behindQueued = false;
-    root.classList.toggle('is-behind', contentBehindLogo());
+    updateBehind();
   });
 }
 
