@@ -26,8 +26,8 @@
      - The scripts set these on <html>: .is-light (the cream has reached the top,
        so the menu turns burgundy), .is-scrolled (the small logo is in),
        .is-folded (the top bar is condensed: menu button instead of the menu),
-       .is-behind / .is-behind-ring (page content is behind the small logo / the
-       menu ring: it gets frosted glass),
+       .is-behind / .is-behind-ring / .is-behind-nav (page content is behind the
+       small logo / the menu ring / the menu: it gets frosted glass),
        .is-drawing (mouse held down: no text selection), .is-lite (lighter
        mode for slower devices: no glass blur), .is-entering (a page that
        opens mid-transition stays hidden for its first frame).
@@ -296,6 +296,28 @@ ul { padding: 0; list-style: none; }
   transition: color 0.6s ease;
 }
 .is-light .site-nav { color: var(--burgundy); }  /* once the cream sweep reaches it */
+/* The same frosted glass as the logo and the ring, behind the whole menu:
+   only while page content is behind it (core.js adds .is-behind-nav) or the
+   mouse is over it, and not while the menu is condensed into the ring */
+.site-nav { position: relative; }
+.site-nav::before {
+  content: "";
+  position: absolute;
+  inset: -10px -16px;
+  z-index: -1;
+  border-radius: 999px;
+  pointer-events: none;
+  background: rgba(59, 0, 8, 0.24);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
+  backdrop-filter: blur(10px) saturate(1.4);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.is-light .site-nav::before { background: rgba(214, 199, 174, 0.42); }
+.is-behind-nav .site-nav::before,
+.site-nav:hover::before { opacity: 1; }
+.is-folded .site-nav::before { opacity: 0; }
+.is-lite .site-nav::before { -webkit-backdrop-filter: none; backdrop-filter: none; }
 /* Menu links fade to a lighter color on hover (shared link rule, section 2) */
 
 /* Condensed top bar (scrolling down, core.js section 6): one word after

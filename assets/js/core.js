@@ -878,6 +878,19 @@ function contentBehind(target) {
 function updateBehind() {
   root.classList.toggle('is-behind', !!headerLogo && root.classList.contains('is-scrolled') && contentBehind(headerLogo));
   root.classList.toggle('is-behind-ring', !!burger && fold.t > 0 && contentBehind(burger));
+  root.classList.toggle('is-behind-nav', fold.t < 1 && contentBehind(siteNav));
+  syncTopColor();
+}
+
+// Phone browsers color their own top bar (behind the clock) and the area
+// you see when pulling the page down. Tell them the color of the page right
+// at the top, so it never shows a different color there.
+const themeMeta = document.querySelector('meta[name="theme-color"]') || document.head.appendChild(Object.assign(document.createElement('meta'), { name: 'theme-color' }));
+function syncTopColor() {
+  const cream = root.classList.contains('is-light') || Site.bg() === 'cream';
+  const color = cream ? COLOR.cream : COLOR.burgundy;
+  if (themeMeta.content !== color) themeMeta.content = color;
+  root.style.backgroundColor = color;
 }
 
 function checkBehindLogo() {
