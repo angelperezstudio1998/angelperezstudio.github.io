@@ -131,8 +131,8 @@ const INTRO_DRIFT = 70;  // how far it flows in from (px)
 // The menu condenses while you scroll down: the words are squashed flat into
 // lines, and the lines are reeled onto a ring like a chain onto a spool (three
 // bars with small gaps), the ring turning counterclockwise. Scrolling up (or pressing
-// the ring) plays it backward. It plays on every screen, phones too (Angel's
-// choice); only "reduce motion" settings get an instant swap.
+// the ring) plays it backward. It plays on every screen and device, phones
+// too, even with "reduce motion" on (Angel's choice).
 const FOLD = {
   time: 1000,      // how long the whole change takes (ms)
   squash: 0.3,     // how much of that time the words take to get squashed flat into lines
@@ -764,7 +764,6 @@ function setFold(on) {
   siteNav.inert = on;            // the hidden menu can't be clicked or tabbed to…
   burger.inert = !on;            // …and neither can the hidden button
   if (glassReady) updateGlass(); // the menu's glass goes and comes with it
-  if (reduceMotion) { fold.t = on ? 1 : 0; drawFold(); checkBehindLogo(); return; }  // "reduce motion": an instant swap
   if (!fold.running) { fold.running = true; fold.last = performance.now(); requestAnimationFrame(foldFrame); }
 }
 
@@ -1366,9 +1365,9 @@ const background = (() => {
     if (small !== patchOn) { patch.style.visibility = small ? '' : 'hidden'; patchOn = small; }
   }
 
-  const patternTarget = () => (pointer.active && hasMouse && !reduceMotion ? 1 : 0);
-  const isMoving = () => !reduceMotion &&
-    (ripples.length > 0 || patternMoved || patternFade !== patternTarget());
+  // (The pattern and the ripples show even with "reduce motion" on: Angel's choice)
+  const patternTarget = () => (pointer.active && hasMouse ? 1 : 0);
+  const isMoving = () => ripples.length > 0 || patternMoved || patternFade !== patternTarget();
 
   function frame(now) {
     frameTick(now);
@@ -1412,7 +1411,7 @@ const background = (() => {
     wake();
   }
 
-  const makesRipple = (e) => !reduceMotion && !e.target.closest('a, button, .hero__logo');  // links make no ripple; the big logo makes its own
+  const makesRipple = (e) => !e.target.closest('a, button, .hero__logo');  // links make no ripple; the big logo makes its own
 
   window.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'touch' || (e.pointerType === 'mouse' && e.button !== 0) || !makesRipple(e)) return;
@@ -1445,7 +1444,6 @@ const background = (() => {
     resize,
     // Start a ripple at (x, y), optionally later (start = a future time)
     addDrop(x, y, start = performance.now()) {
-      if (reduceMotion) return;
       ripples.push({ x, y, start });
       if (ripples.length > (perf.lite ? QUALITY.liteRipples : RIPPLE.max)) ripples.shift();
       wake();
