@@ -1455,6 +1455,29 @@ const background = (() => {
   return {
     // Redraw at the right resolution (called when switching to lighter mode)
     resize,
+    // The whole drop pattern as one repeating picture (a data: URL to use as a
+    // CSS background, one tile of it): drops in `color` at `alpha` visibility.
+    // Drawn at 2× so it stays sharp; drops that cross the tile's edges are
+    // drawn on both sides so the tiles join seamlessly.
+    patternTile(color, alpha) {
+      const S = 2;
+      const t = document.createElement('canvas');
+      t.width = Math.round(TILE_W * S);
+      t.height = Math.round(TILE_H * S);
+      const tc = t.getContext('2d');
+      const scale = (PATTERN.mark / DROP_UNITS) * S;
+      tc.strokeStyle = color;
+      tc.globalAlpha = alpha;
+      for (let i = 0; i < PER_TILE; i++) {
+        const { x, y } = dropAt(i, 0);
+        for (const ox of [-TILE_W, 0, TILE_W]) for (const oy of [-TILE_H, 0, TILE_H]) {
+          tc.setTransform(scale, 0, 0, scale, (x + ox) * S, (y + oy) * S);
+          tc.lineWidth = S / scale;  // 1px outline
+          tc.stroke(dropPath(dropAngle(i)));
+        }
+      }
+      return t.toDataURL();
+    },
     // Start a ripple at (x, y), optionally later (start = a future time)
     addDrop(x, y, start = performance.now()) {
       ripples.push({ x, y, start });

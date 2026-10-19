@@ -639,7 +639,7 @@ ul { padding: 0; list-style: none; }
   max-height: min(88vh, 1100px);
   margin: auto;
   padding: clamp(24px, 4vw, 56px);
-  border: 0;
+  border: 1px solid rgba(59, 0, 8, 0.18);  /* (a thin edge: it's cream on cream) */
   border-radius: 18px;
   background: var(--cream);
   color: var(--burgundy);
@@ -647,10 +647,10 @@ ul { padding: 0; list-style: none; }
   overscroll-behavior: contain;  /* scrolling it never scrolls the page behind */
   scrollbar-width: thin;
 }
-.project::backdrop {
-  background: rgba(59, 0, 8, 0.45);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+.project::backdrop {           /* no tint: the page blurred, with the drop pattern over it (home.js adds the pattern) */
+  background-color: transparent;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 .project[open] { animation: project-in 0.3s cubic-bezier(.2, .7, .2, 1); }
 .project[open]::backdrop { animation: project-fade 0.3s ease; }
