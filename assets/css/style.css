@@ -641,8 +641,9 @@ ul { padding: 0; list-style: none; }
   padding: clamp(24px, 4vw, 56px);
   border: 0;
   border-radius: 18px;
-  /* Frosted glass: no color of its own, just a strong blur of what's behind it */
-  background: transparent;
+  /* Frosted glass: a strong blur of what's behind it, under a layer of white
+     with the faintest cream tone (a little see-through, so the frost shows) */
+  background: rgba(255, 255, 253, 0.68);
   -webkit-backdrop-filter: blur(28px);
   backdrop-filter: blur(28px);
   color: var(--burgundy);
@@ -682,7 +683,7 @@ ul { padding: 0; list-style: none; }
   margin: -8px -8px 0 16px;
   border: 1px solid rgba(59, 0, 8, 0.25);
   border-radius: 50%;
-  background: transparent;    /* glass too, no color (it stays put while the page scrolls under it) */
+  background: rgba(255, 255, 253, 0.68);  /* the same glass (it stays put while the page scrolls under it) */
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   color: inherit;
