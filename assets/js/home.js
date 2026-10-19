@@ -192,10 +192,10 @@ if (!smallScreen) {
   workList.addEventListener('pointerleave', () => liftRow(null));
   workList.addEventListener('focusout', (e) => { if (!workList.contains(e.relatedTarget)) liftRow(null); });
   // How the cards sit (all from the card height): they rest --air above the
-  // row's title, and the rows above lift just enough that the cards cover
-  // part of the line above (--cover: how much of a card may sit over it).
-  // --row: the row's height; --opens: how far the rows above lift;
-  // --reach: the hovered row's area upward, so it keeps the mouse over its cards.
+  // row's title, and the rows above lift by the card height + --air above and
+  // below, so the cards never cover any text.
+  // --row: the row's height; --opens: how far the rows above lift (the
+  // hovered row's area upward too, so it keeps the mouse over its cards).
   // The cards are also kept small enough that the heading, lifted, still
   // clears the top bar (--fit: the tallest they may be).
   const head = workScene.querySelector('.section-head');
@@ -207,12 +207,9 @@ if (!smallScreen) {
       if (!card) return;
       const css = getComputedStyle(li);
       const air = parseFloat(css.getPropertyValue('--air')) || 0;
-      const cover = parseFloat(css.getPropertyValue('--cover')) || 0;
-      li.style.setProperty('--fit', `${Math.max(80, Math.floor((room - air) / (1 - cover)))}px`);
-      const h = card.offsetHeight;
+      li.style.setProperty('--fit', `${Math.max(80, Math.floor(room - air * 2))}px`);
       li.style.setProperty('--row', `${li.offsetHeight}px`);
-      li.style.setProperty('--opens', `${Math.round(h * (1 - cover) + air)}px`);
-      li.style.setProperty('--reach', `${Math.round(h + air * 2)}px`);
+      li.style.setProperty('--opens', `${Math.round(card.offsetHeight + air * 2)}px`);
     });
   });
 }

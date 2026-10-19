@@ -471,8 +471,8 @@ ul { padding: 0; list-style: none; }
 .scene--work {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 96px var(--gutter) 48px;
+  justify-content: flex-end;  /* the list sits low: the space above is where a row's cards open */
+  padding: 96px var(--gutter) clamp(48px, 10vh, 110px);
 }
 
 .section-head {
@@ -517,17 +517,17 @@ ul { padding: 0; list-style: none; }
 
 /* Project cards: one per project in each work row. Hovering (or focusing) a
    row lifts the rows above it (and the heading) to open a space, and its cards
-   rise from behind the row's bottom line, side by side with equal gaps, and
-   settle just above the row's title, partly over the line above. The bottom
-   line itself never moves. home.js measures the row (--row) and works out how
+   rise from behind the row's bottom line (passing behind its title), side by
+   side with equal gaps, and settle in that space, just above the title,
+   never covering any text. The bottom line itself never moves. home.js measures the row (--row) and works out how
    far the rows above lift (--opens; the hovered row's goes on the work section
    as --lift) and adds .is-lifted / .is-above. Each card's number (--k) and the
    number of cards (--n) come from home.js too. */
 .work-list > li {
   position: relative;
-  --air: 20px;                /* space between the cards and the row's title */
-  --cover: 0.12;              /* how much of a card sits over the line above (0.12 = 12%; more covers the title above) */
+  --air: 20px;                /* space above and below the cards */
 }
+.work-item { z-index: 3; }    /* the row's text stays in front of its rising cards */
 .section-head,
 .work-list > li { transition: translate 0.55s cubic-bezier(.2, .7, .2, 1); }  /* (translate: the heading already uses transform for the wind) */
 .is-above { translate: 0 calc(-1 * var(--lift, 0px)); }
@@ -539,7 +539,7 @@ ul { padding: 0; list-style: none; }
   left: 0;
   right: 0;
   bottom: 100%;
-  height: var(--reach);
+  height: var(--lift);
 }
 .work-cards {
   position: absolute;
@@ -557,7 +557,7 @@ ul { padding: 0; list-style: none; }
   /* Cut off at the row's bottom line: the cards come up from behind it */
   clip-path: inset(-100vh -100vw calc(-1 * (var(--row, 0px) + var(--air))) -100vw);
   --gap: 16px;                /* space between the cards */
-  --tallest: 30vh;            /* the cards are as big as fit across the row, up to this height
+  --tallest: 26vh;            /* the cards are as big as fit across the row, up to this height
                                  (and home.js's --fit: the heading must still clear the top bar) */
   --ratio: 0.8;               /* card shape (width ÷ height): posters 4:5 */
 }
@@ -568,12 +568,34 @@ ul { padding: 0; list-style: none; }
   width: min(calc((100% - (var(--n) - 1) * var(--gap)) / var(--n)), calc(min(var(--tallest), var(--fit, 100vh)) * var(--ratio)));
   aspect-ratio: var(--ratio);
   min-height: 0;
+  border-radius: 14px;
+  overflow: hidden;           /* (the image follows the rounded corners) */
+  place-items: end stretch;   /* the quick line sits at the bottom */
   background: var(--cream) linear-gradient(rgba(59, 0, 8, 0.05), rgba(59, 0, 8, 0.05));  /* flat tint (placeholder) */
   /* Hidden: all the way down, below the bottom line */
   transform: translateY(calc(100% + var(--row, 0px) + var(--air) + 4px));
   opacity: 0;
   transition: transform 0.45s cubic-bezier(.5, 0, .75, 0), opacity 0.2s ease 0.25s;
 }
+/* The quick line about the project, inside the card at the bottom, on a
+   frosted strip so it reads on any image */
+.work-card__desc {
+  margin: 8px;
+  border: solid transparent;   /* (space around the text as a border, not padding: a third line can't peek into it) */
+  border-width: 7px 10px;
+  border-radius: 8px;
+  background: rgba(214, 199, 174, 0.85);  /* cream, slightly see-through */
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--burgundy);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;      /* at most two lines */
+  -webkit-box-orient: vertical;
+}
+.work-card__name { font-weight: 600; }
 .work-list > li.is-lifted .work-card {
   opacity: 1;
   transform: none;
