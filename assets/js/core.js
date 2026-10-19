@@ -175,7 +175,7 @@ const TRANSITION = {
 // you see around the mouse.
 const PATTERN = {
   mark: 18,        // height of each drop (px); the spacing grows and shrinks with it
-  opacity: 0.75,   // how visible the pattern is overall (0.75 = 25% see-through)
+  opacity: 0.55,   // how visible the pattern is overall (0.55 = 45% see-through)
   radius: 220,     // size of the patch of pattern around the mouse (px)
   hover: 0.6,      // how visible the pattern is around the mouse (0 to 1)
   fadeTime: 0.5,   // how long the patch takes to appear / disappear (s)
