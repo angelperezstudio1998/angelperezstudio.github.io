@@ -661,7 +661,7 @@ ul { padding: 0; list-style: none; }
 @supports not selector(::-webkit-scrollbar) {
   .project { scrollbar-width: thin; scrollbar-color: rgba(59, 0, 8, 0.3) transparent; }
 }
-.project::backdrop {           /* no tint: the page blurred, with the drop pattern over it (home.js adds the pattern) */
+.project::backdrop {           /* no tint, no pattern: just the page blurred */
   background-color: transparent;
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);

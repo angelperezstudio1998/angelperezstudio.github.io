@@ -1197,8 +1197,7 @@ const background = (() => {
   // One water drop from the logo (its bottom-left drop, point up), centered,
   // as a reusable outline. One version per direction it can face (cached).
   const DROP_UNITS = 66.18;  // how tall the drop is, in the logo's units
-  const DROP_D = 'M1.37 -32.33 L19.45 -1.07 C25.75 9.82 22.09 24.07 11.11 30.22 C7.91 32.02 4.45 32.95 1 33.09 L0.08 33.09 L-0.81 33.09 C-8.29 32.79 -15.46 28.79 -19.49 21.82 C-23.51 14.86 -23.41 6.65 -19.93 0.02 L-19.48 -0.75 L-19.02 -1.55 L-1.26 -32.33 C-0.68 -33.34 0.78 -33.34 1.37 -32.33 Z';
-  const dropShape = new Path2D(DROP_D);
+  const dropShape = new Path2D('M1.37 -32.33 L19.45 -1.07 C25.75 9.82 22.09 24.07 11.11 30.22 C7.91 32.02 4.45 32.95 1 33.09 L0.08 33.09 L-0.81 33.09 C-8.29 32.79 -15.46 28.79 -19.49 21.82 C-23.51 14.86 -23.41 6.65 -19.93 0.02 L-19.48 -0.75 L-19.02 -1.55 L-1.26 -32.33 C-0.68 -33.34 0.78 -33.34 1.37 -32.33 Z');
   const dropPaths = new Map();
   function dropPath(deg) {
     let path = dropPaths.get(deg);
@@ -1456,26 +1455,6 @@ const background = (() => {
   return {
     // Redraw at the right resolution (called when switching to lighter mode)
     resize,
-    // The whole drop pattern as one repeating picture (a data: URL to use as a
-    // CSS background, one tile of it): drops in `color` at `alpha` visibility,
-    // softened by `blur` px (a touch thicker then, so softening doesn't also
-    // make it fainter). It's an SVG, so it stays sharp at any screen
-    // resolution and the blur works in every browser; drops that cross the
-    // tile's edges are drawn on both sides so the tiles join seamlessly.
-    patternTile(color, alpha, blur = 0) {
-      const scale = PATTERN.mark / DROP_UNITS;
-      let drops = '';
-      for (let i = 0; i < PER_TILE; i++) {
-        const { x, y } = dropAt(i, 0);
-        for (const ox of [-TILE_W, 0, TILE_W]) for (const oy of [-TILE_H, 0, TILE_H]) {
-          drops += `<path transform="translate(${round2(x + ox)} ${round2(y + oy)}) scale(${scale}) rotate(${dropAngle(i)})" d="${DROP_D}"/>`;
-        }
-      }
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${TILE_W}" height="${TILE_H}" viewBox="0 0 ${TILE_W} ${TILE_H}">`
-        + (blur > 0 ? `<filter id="b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="${blur}"/></filter>` : '')
-        + `<g fill="none" stroke="${color}" stroke-opacity="${alpha}" stroke-width="${blur > 0 ? 1.25 : 1}" vector-effect="non-scaling-stroke"${blur > 0 ? ' filter="url(#b)"' : ''}>${drops}</g></svg>`;
-      return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-    },
     // Start a ripple at (x, y), optionally later (start = a future time)
     addDrop(x, y, start = performance.now()) {
       ripples.push({ x, y, start });

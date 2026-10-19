@@ -266,21 +266,6 @@ if (!smallScreen) {
 // page (a <template class="work-card__page"> after the card's button; without
 // one, a placeholder). Esc, the × or clicking outside it closes it.
 const projectPopup = document.querySelector('.project');
-// Behind it: the page blurred, with the logo's drop pattern laid over it,
-// slightly soft (made once from core.js's pattern, then used as the
-// backdrop's background). POPUP_PATTERN: how it looks.
-const POPUP_PATTERN = {
-  alpha: PATTERN.opacity * 0.6 * 0.6,  // how visible (the mouse pattern's look, made 40% see-through)
-  blur: 0.5,                           // how soft (px)
-};
-let popupPattern = false;
-function addPopupPattern() {
-  if (popupPattern) return;
-  popupPattern = true;
-  const rule = `.project::backdrop { background-image: url("${background.patternTile(COLOR.burgundy, POPUP_PATTERN.alpha, POPUP_PATTERN.blur)}"); background-size: ${TILE_W}px ${TILE_H}px; }`;
-  const sheet = document.head.appendChild(document.createElement('style')).sheet;
-  sheet.insertRule(rule);
-}
 const popupBody = projectPopup.querySelector('.project__body');
 let popupCard = null;  // the card that opened it
 
@@ -294,7 +279,6 @@ function openProject(card) {
   popupBody.replaceChildren(page ? page.content.cloneNode(true)
     : Object.assign(document.createElement('div'), { className: 'ph project__image', innerHTML: '<span class="label">Project images</span>' }));
   popupCard = card;
-  addPopupPattern();
   projectPopup.showModal();
   projectPopup.scrollTop = 0;
 }
