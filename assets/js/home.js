@@ -244,9 +244,8 @@ if (!smallScreen) {
         const t = r.querySelector('.work-item__title');
         return t.offsetLeft + t.offsetWidth;
       }));
-      const from = titleEnd + 16 + 28;  // (16: the title's hover nudge)
-      const arrow = li.querySelector('.work-item__arrow');
-      const width = arrow.offsetLeft - 16 - from;
+      const from = titleEnd + 16 + 20;  // (16: the title's hover nudge)
+      const width = li.offsetWidth - from;  // up to the end of the row (the count and arrow make way)
       const small = Math.max(24, Math.floor(Math.min(most, (width - (n - 1) * gap) / (ratio * (n - 1 + grow)))));
       list.style.setProperty('--from', `${from}px`);
       list.style.setProperty('--small', `${small}px`);

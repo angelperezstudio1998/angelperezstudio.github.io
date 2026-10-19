@@ -98,7 +98,7 @@ const HOVER = {
   radius: 170,     // size of the area around the pointer that reacts (px)
   push: 30,        // how far the closest pieces get pushed out (px)
   blur: 10,        // blur on the closest pieces (px)
-  fade: 0.2,       // how much they fade (0 = not at all, 1 = fully)
+  fade: 0,         // how much they fade (0 = not at all, 1 = fully): none, text never turns see-through
   tilt: 12,        // how much they rock as they're pushed (degrees)
   speed: 0.035,    // how quickly pieces move away (lower = slower, lazier)
   settle: 0.012,   // how quickly they drift back to their places (lower = slower)

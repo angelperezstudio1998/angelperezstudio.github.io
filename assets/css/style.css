@@ -92,21 +92,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Links: on hover (or keyboard focus) every clickable text fades smoothly to
-   a lighter version of its own color. --link is the link's normal color; a
-   link that has its own color sets --link instead of color (see .hero__scroll,
-   .site-header__logo). Only color changes, never opacity, so the glass blur
-   behind small text keeps working (see section 4). */
+/* Links keep their full color on hover: text never turns see-through (Angel's
+   choice); the hover effect on the letters is the feedback. Keyboard focus
+   gets an underline so you can see where you are. --link is the link's color;
+   a link that has its own color sets --link instead of color (see .hero__scroll,
+   .site-header__logo). */
 a {
   --link: currentColor;
   color: var(--link);
   text-decoration: none;
-  transition: color 0.4s ease;
 }
-a:hover,
-a:focus-visible {
-  color: color-mix(in srgb, var(--link) 55%, transparent);
-}
+a:focus-visible { outline: none; text-decoration: underline; text-underline-offset: 0.2em; }
 h1, h2, p, ul { margin: 0; }
 ul { padding: 0; list-style: none; }
 
@@ -369,12 +365,11 @@ ul { padding: 0; list-style: none; }
   height: 100%;
   overflow: visible;
   pointer-events: none;
-  --link: var(--cream);          /* same color and hover fade as the menu */
+  --link: var(--cream);          /* same color as the menu */
   color: var(--link);
   transition: color 0.6s ease;
 }
 .is-light .site-morph { --link: var(--burgundy); }
-.site-burger:hover + .site-morph { color: color-mix(in srgb, var(--link) 55%, transparent); }
 .site-morph path {
   fill: none;
   stroke: currentColor;
@@ -529,6 +524,7 @@ ul { padding: 0; list-style: none; }
 .work-list > li { position: relative; }
 .work-item__info { transition: color 0.3s ease; }
 .work-list > li.is-active .work-item__info { color: transparent; }
+.js .work-list > li.is-active .work-item__arrow { visibility: hidden; }  /* (the cards use the arrow's spot too) */
 .work-cards {
   position: absolute;
   left: var(--from, 50%);
@@ -544,9 +540,9 @@ ul { padding: 0; list-style: none; }
   /* Cut off at the row's bottom line: the cards come up from behind it */
   clip-path: inset(-100vh -100vw calc(-1 * var(--air)) -100vw);
   --air: 16px;                /* space between the cards and the bottom line */
-  --gap: 12px;                /* space between the cards */
-  --most: 130px;              /* the cards' height, at most (smaller if the row has no room) */
-  --grow: 2;                  /* a hovered card gets this many times bigger */
+  --gap: 10px;                /* space between the cards */
+  --most: 170px;              /* the cards' height, at most (smaller if the row has no room) */
+  --grow: 1.8;                /* a hovered card gets this many times bigger */
   --ratio: 0.8;               /* card shape (width ÷ height): posters 4:5 */
 }
 .is-active .work-cards { pointer-events: auto; }
