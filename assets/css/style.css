@@ -515,7 +515,6 @@ ul { padding: 0; list-style: none; }
 .work-item:hover .work-item__arrow { opacity: 1; transform: none; }
 .js .work-item__arrow { opacity: 0; transition: none; }
 
-.work-item--soon .work-item__title { color: var(--fg-3); }
 
 
 /* ---------- 9. Scene 3: contact ---------- */
@@ -629,7 +628,6 @@ ul { padding: 0; list-style: none; }
   letter-spacing: -0.03em;
   line-height: 1.1;
 }
-.about-list__soon { color: var(--fg-3); }
 
 .about-tags { flex-direction: row; flex-wrap: wrap; gap: 10px; }
 .about-tags li {
