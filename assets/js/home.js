@@ -145,90 +145,130 @@ const sceneLive = (scene) => () => scene.lastVisibility !== 'hidden';  // (the l
 const workLines = makeLines('.section-head, .work-item', 'bottom', sceneLive(workScene));
 const contactLines = makeLines('.scene--contact .contact__bottom', 'top', sceneLive(contactScene));
 
-// Project cards (one per project in each work row; style.css shows them small,
-// next to the row's title, on hover). Each card learns its number (--k: they
-// rise one after another, left to right).
+// Project cards (one per project in each work row; style.css, "Project cards").
+// Each card learns its number (--k: they rise one after another, left to right).
 // Phones: tapping a row opens its cards as a strip under it (and closes the others).
 document.querySelectorAll('.work-cards').forEach((list) => {
   [...list.children].forEach((card, k) => card.style.setProperty('--k', k));
 });
-// Bigger screens: hovering (or focusing) a row lifts the rows above it (and the
-// section heading) to open a space, and its cards rise from behind the row's
-// bottom line, which stays put (style.css, "Project cards").
-// What moved is told to the hover, the lines and the glass, so they still
-// line up with what you see.
+// Bigger screens: hovering (or focusing) a row brings its cards up from behind
+// its bottom line, next to the title. Where they reach over the lines above,
+// those lines fade out near them.
 const workList = document.querySelector('.work-list');
 const workRows = [...workList.children];
-let liftedRow = null, liftedBy = 0;
+const workHead = workScene.querySelector('.section-head');
+let activeRow = null;
 
-function shiftAbove(row, dy) {
-  const moved = [workScene.querySelector('.section-head'), ...workRows.slice(0, workRows.indexOf(row))];
-  const inside = (el) => moved.some((m) => m.contains(el));
-  moved.forEach((m) => m.classList.toggle('is-above', dy < 0));
-  Site.hoverPieces.forEach((pc) => { if (inside(pc.el)) pc.cy += dy; });
-  lines.forEach((ln) => { if (inside(ln.host)) ln.y += dy; });
-  glassHosts.forEach((g) => { if (g.box && inside(g.el)) { g.box.top += dy; g.box.bottom += dy; } });
+function showCards(row) {
+  if (row === activeRow) return;
+  if (activeRow) { activeRow.classList.remove('is-active'); cutLines(activeRow, null); }
+  activeRow = row;
+  if (!row) return;
+  row.classList.add('is-active');
+  cutLines(row, -1);
 }
 
-function liftRow(row) {
-  if (row === liftedRow) return;
-  if (liftedRow) { liftedRow.classList.remove('is-lifted'); shiftAbove(liftedRow, liftedBy); }
-  liftedRow = row;
-  if (!row) return;
-  liftedBy = parseFloat(row.style.getPropertyValue('--opens')) || 0;
-  workScene.style.setProperty('--lift', `${liftedBy}px`);
-  row.classList.add('is-lifted');
-  shiftAbove(row, -liftedBy);
+// Fade the lines above a row where its cards cross them: where the small
+// cards reach over a line (all of them), and where the big (hovered) card k
+// does (-1: none hovered; null: the row is closing, so no cuts at all).
+// The stretch slides along as the hovered card changes (style.css, ".line").
+function cutLines(row, k) {
+  const g = row.geom;
+  if (!g) return;
+  const w = g.small * g.ratio;
+  g.lines.forEach((c) => {
+    let l = Infinity, r = -Infinity;
+    if (k !== null && c.y > g.bottom - g.small - 2) {
+      l = g.from; r = g.from + g.n * w + (g.n - 1) * g.gap + (k >= 0 ? w * (g.grow - 1) : 0);
+    }
+    if (k !== null && k >= 0 && c.y > g.bottom - g.small * g.grow - 2) {
+      const x = g.from + k * (w + g.gap);
+      l = Math.min(l, x); r = Math.max(r, x + w * g.grow);
+    }
+    const svg = c.svg;
+    if (l === Infinity) {
+      svg.classList.remove('is-cut');
+      setTimeout(() => { if (!svg.classList.contains('is-cut')) svg.classList.remove('has-cut'); }, 500);  // (after it has faded back)
+      return;
+    }
+    svg.style.setProperty('--cut-l', `${Math.round(l + c.dx - 20)}px`);  // (a little room either side)
+    svg.style.setProperty('--cut-r', `${Math.round(r + c.dx + 20)}px`);
+    if (svg.classList.contains('is-cut')) return;
+    svg.classList.add('has-cut');
+    requestAnimationFrame(() => { if (row === activeRow) svg.classList.add('is-cut'); });  // (one frame later, so it fades)
+  });
 }
 
 if (!smallScreen) {
   workRows.forEach((li) => {
     if (!li.querySelector('.work-cards')) return;
-    li.addEventListener('pointerenter', () => liftRow(li));
-    li.addEventListener('focusin', () => liftRow(li));
+    li.addEventListener('pointerenter', () => showCards(li));
+    li.addEventListener('focusin', () => showCards(li));
+    li.querySelectorAll('.work-card').forEach((card, k) => {
+      const grow = () => { if (li === activeRow) cutLines(li, k); };
+      const shrink = () => { if (li === activeRow) cutLines(li, -1); };
+      card.addEventListener('pointerenter', grow);
+      card.addEventListener('pointerleave', shrink);
+      card.addEventListener('focusin', grow);
+      card.addEventListener('focusout', shrink);
+    });
   });
-  workList.addEventListener('pointerleave', () => { if (!projectPopup.open) liftRow(null); });
-  workList.addEventListener('focusout', (e) => { if (!workList.contains(e.relatedTarget) && !projectPopup.open) liftRow(null); });
+  workList.addEventListener('pointerleave', () => { if (!projectPopup.open) showCards(null); });
+  workList.addEventListener('focusout', (e) => { if (!workList.contains(e.relatedTarget) && !projectPopup.open) showCards(null); });
 
   // Where each row's cards go and how big they are: they start after the
-  // title (plus its hover nudge) and must fit before the project count with
-  // one card grown (--grow); the rows above lift just enough for a grown card,
-  // and never so far that the heading would slide under the top bar.
-  const head = workScene.querySelector('.section-head');
+  // longest title they could reach over (plus its hover nudge) and must fit
+  // before the arrow with one card grown (--grow). Then: which lines above
+  // a grown card would cross, and where along them (with some room either side).
   const px = (css, name) => parseFloat(css.getPropertyValue(name)) || 0;
+  // (positions inside the work section from the layout, so the wind moving
+  // things while the section is off screen doesn't throw them off)
+  const at = (el) => {
+    let x = 0, y = 0;
+    for (let e = el; e && e !== workScene; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop; }
+    return { x, y, b: y + el.offsetHeight };
+  };
   Site.onMeasure.unshift(() => {
-    liftRow(null);
-    const room = head.offsetTop - document.querySelector('.site-header').offsetHeight - 12;  // (the scene fills the screen)
-    workRows.forEach((li) => {
+    showCards(null);
+    workRows.forEach((li, i) => {
       const list = li.querySelector('.work-cards');
       if (!list) return;
       const css = getComputedStyle(list);
       const air = px(css, '--air'), gap = px(css, '--gap'), grow = px(css, '--grow') || 1;
       const ratio = px(css, '--ratio') || 1, most = px(css, '--most');
-      const title = li.querySelector('.work-item__title'), info = li.querySelector('.work-item__info');
-      const from = title.offsetLeft + title.offsetWidth + 16 + 32;  // (16: the title's hover nudge)
-      const width = info.offsetLeft - 32 - from;
       const n = list.children.length;
-      const rowH = li.offsetHeight;
-      const small = Math.max(24, Math.floor(Math.min(
-        most,
-        (width - (n - 1) * gap) / (ratio * (n - 1 + grow)),  // fits across, with one card grown
-        (room + rowH - air * 2) / grow,                       // a grown card fits under the top bar
-      )));
+      const liBox = at(li);
+      const reachTop = liBox.b - air - most * grow;  // the highest a grown card can go
+      const above = workRows.slice(0, i).filter((r) => at(r).b > reachTop);  // rows it may reach over
+      const titleEnd = Math.max(...[li, ...above].map((r) => {
+        const t = r.querySelector('.work-item__title');
+        return t.offsetLeft + t.offsetWidth;
+      }));
+      const from = titleEnd + 16 + 28;  // (16: the title's hover nudge)
+      const arrow = li.querySelector('.work-item__arrow');
+      const width = arrow.offsetLeft - 16 - from;
+      const small = Math.max(24, Math.floor(Math.min(most, (width - (n - 1) * gap) / (ratio * (n - 1 + grow)))));
       list.style.setProperty('--from', `${from}px`);
       list.style.setProperty('--small', `${small}px`);
-      li.style.setProperty('--opens', `${Math.max(0, Math.round(small * grow + air * 2 - rowH))}px`);
+      // The lines above that the cards may cross: their height (y, measured
+      // from the cards' bottom like the cards) and where they start (dx)
+      li.geom = {
+        from, small, ratio, gap, grow, n,
+        bottom: 0,
+        lines: lines.filter((ln) => ln.host === workHead || workRows.slice(0, i).some((r) => r.contains(ln.host)))
+          .map((ln) => ({ svg: ln.svg, y: at(ln.host).b - (liBox.b - air), dx: liBox.x - at(ln.host).x })),  // (each line spans its element)
+      };
     });
   });
 }
 
 // ---- The project popup: clicking a card opens its project page ----
-// Filled in from the card: its row's title, its name and quick line, and its
+// Filled in from the card: its row's name, its name and quick line, and its
 // page (a <template class="work-card__page"> after the card's button; without
 // one, a placeholder). Esc, the × or clicking outside it closes it.
 const projectPopup = document.querySelector('.project');
 const popupBody = projectPopup.querySelector('.project__body');
-let popupCard = null;  // the card that opened it (focus goes back there)
+let popupCard = null;  // the card that opened it
 
 function openProject(card) {
   const name = card.querySelector('.work-card__name');
@@ -253,7 +293,7 @@ projectPopup.addEventListener('click', (e) => {  // a click outside the popup (o
   if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) projectPopup.close();
 });
 projectPopup.addEventListener('close', () => {
-  if (popupCard && !popupCard.closest('.work-list > li').matches(':hover')) liftRow(null);  // (the mouse may have left the row meanwhile)
+  if (popupCard && !popupCard.closest('.work-list > li').matches(':hover')) showCards(null);  // (the mouse may have left the row meanwhile)
   popupCard = null;
 });
 // While it's open, the wheel and touch scroll only the popup, never the page

@@ -515,31 +515,20 @@ ul { padding: 0; list-style: none; }
 .work-item:hover .work-item__arrow { opacity: 1; transform: none; }
 .js .work-item__arrow { opacity: 0; transition: none; }
 
-/* Project cards: one per project in each work row, small, to the right of the
-   row's title (between it and the project count). Hovering (or focusing) a
-   row lifts the rows above it (and the heading) to open a little space, and
-   its cards rise from behind the row's bottom line, which never moves.
-   Hovering a card makes it bigger (it grows upward) and the cards after it
-   slide right to keep the spacing. Clicking a card opens its project page in
-   the popup below.
-   home.js measures each row: where the cards start (--from), how big they can
-   be (--small) and how far the rows above lift (--opens; the hovered row's goes
-   on the work section as --lift), and adds .is-lifted / .is-above. Each card's
-   number (--k) comes from home.js too. */
+/* Project cards: one per project in each work row, to the right of the row's
+   title. Hovering (or focusing) a row brings its cards up from behind the
+   row's bottom line, one after another, with a slight fade. They may reach up
+   over the lines above: where they do, those lines fade out near the cards.
+   Hovering a card makes it bigger still (it grows upward) and the cards after
+   it slide right to keep the spacing. While its cards are out, the row's
+   project count fades so they have room. Clicking a card opens its project
+   page in the popup below.
+   home.js measures each row: where its cards start (--from) and how big they
+   can be (--small) so they fit, sets each card's number (--k), adds
+   .is-active to the hovered row and cuts the lines the cards cross (.is-cut). */
 .work-list > li { position: relative; }
-.section-head,
-.work-list > li { transition: translate 0.55s cubic-bezier(.2, .7, .2, 1); }  /* (translate: the heading already uses transform for the wind) */
-.is-above { translate: 0 calc(-1 * var(--lift, 0px)); }
-/* The space above the hovered row still belongs to it (so moving the mouse
-   up onto a big card doesn't switch to the row above) */
-.work-list > li.is-lifted::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  height: var(--lift);
-}
+.work-item__info { transition: color 0.3s ease; }
+.work-list > li.is-active .work-item__info { color: transparent; }
 .work-cards {
   position: absolute;
   left: var(--from, 50%);
@@ -554,36 +543,37 @@ ul { padding: 0; list-style: none; }
   z-index: 2;
   /* Cut off at the row's bottom line: the cards come up from behind it */
   clip-path: inset(-100vh -100vw calc(-1 * var(--air)) -100vw);
-  --air: 18px;                /* space between the cards and the bottom line */
+  --air: 16px;                /* space between the cards and the bottom line */
   --gap: 12px;                /* space between the cards */
-  --most: 96px;               /* the cards' height, at most (smaller if the row has no room) */
+  --most: 130px;              /* the cards' height, at most (smaller if the row has no room) */
   --grow: 2;                  /* a hovered card gets this many times bigger */
   --ratio: 0.8;               /* card shape (width ÷ height): posters 4:5 */
-  /* Movement (also used by the "reduce motion" block, section 13) */
-  --sink: transform 0.4s cubic-bezier(.5, 0, .75, 0), opacity 0.2s ease 0.2s, height 0.35s cubic-bezier(.2, .7, .2, 1);
-  --rise: transform 0.65s cubic-bezier(.2, .7, .2, 1) calc(60ms + var(--k) * 45ms),
-          opacity 0.35s ease calc(60ms + var(--k) * 45ms),
-          height 0.35s cubic-bezier(.2, .7, .2, 1);
 }
-.is-lifted .work-cards { pointer-events: auto; }
+.is-active .work-cards { pointer-events: auto; }
 .work-cards--branding { --ratio: 1.3333; }  /* 4:3 */
 .work-cards--web      { --ratio: 1.6; }     /* 16:10 */
 .work-card {
   flex: none;
   height: var(--small, var(--most));
   aspect-ratio: var(--ratio);
+  /* Movement (also used by the "reduce motion" block, section 13). Going:
+     they sink back behind the line; coming: they rise one after another. */
+  --sink: transform 0.4s cubic-bezier(.5, 0, .75, 0), opacity 0.25s ease 0.15s, height 0.35s cubic-bezier(.2, .7, .2, 1);
+  --rise: transform 0.7s cubic-bezier(.2, .7, .2, 1) calc(60ms + var(--k) * 50ms),
+          opacity 0.45s ease calc(60ms + var(--k) * 50ms),
+          height 0.35s cubic-bezier(.2, .7, .2, 1);
   /* Hidden: all the way down, below the bottom line */
   transform: translateY(calc(100% + var(--air) + 4px));
   opacity: 0;
   transition: var(--sink);
 }
-.work-list > li.is-lifted .work-card {
+.work-list > li.is-active .work-card {
   opacity: 1;
   transform: none;
   transition: var(--rise);
 }
-.work-list > li.is-lifted .work-card:hover,
-.work-list > li.is-lifted .work-card:focus-within { height: calc(var(--small, var(--most)) * var(--grow)); }
+.work-list > li.is-active .work-card:hover,
+.work-list > li.is-active .work-card:focus-within { height: calc(var(--small, var(--most)) * var(--grow)); }
 .work-cards .work-card__open {  /* the card itself: a button (its image goes inside); (.work-cards: beats .ph) */
   display: grid;
   place-items: end stretch;   /* the quick line sits at the bottom */
@@ -627,6 +617,24 @@ ul { padding: 0; list-style: none; }
 .work-card:hover .work-card__desc,
 .work-card:focus-within .work-card__desc { opacity: 1; transition-delay: 0.15s; }
 .work-card__name { font-weight: 600; }
+
+/* Lines the cards cross fade out near them: a see-through stretch from
+   --cut-l to --cut-r (set by home.js) that fades in and out over --cut-soft.
+   --hole is how visible the line is in that stretch (1 = fully, 0 = gone). */
+@property --hole { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --cut-l { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --cut-r { syntax: "<length>"; inherits: false; initial-value: 0px; }
+.line.has-cut {
+  --cut-soft: 56px;
+  --hole: 1;
+  transition: --hole 0.35s ease;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(var(--cut-l) - var(--cut-soft)), rgb(0 0 0 / var(--hole)) var(--cut-l), rgb(0 0 0 / var(--hole)) var(--cut-r), #000 calc(var(--cut-r) + var(--cut-soft)));
+          mask-image: linear-gradient(to right, #000 calc(var(--cut-l) - var(--cut-soft)), rgb(0 0 0 / var(--hole)) var(--cut-l), rgb(0 0 0 / var(--hole)) var(--cut-r), #000 calc(var(--cut-r) + var(--cut-soft)));
+}
+.line.has-cut.is-cut {        /* (while cut, the stretch slides along with the cards) */
+  --hole: 0;
+  transition: --hole 0.35s ease 0.1s, --cut-l 0.35s cubic-bezier(.2, .7, .2, 1), --cut-r 0.35s cubic-bezier(.2, .7, .2, 1);
+}
 
 /* The project popup (a card's project page). home.js fills it in and opens
    it; Esc, the × or clicking outside closes it. */
@@ -958,13 +966,14 @@ ul { padding: 0; list-style: none; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition: none !important; animation: none !important; }
-  /* Except the work rows opening and their cards rising and growing: small
-     motions you start yourself by hovering, and the whole point of the work list */
-  .section-head,
-  .work-list > li { transition: translate 0.55s cubic-bezier(.2, .7, .2, 1) !important; }
+  /* Except the work cards rising, growing and the lines fading near them:
+     small motions you start yourself by hovering, and the whole point of the work list */
   .work-card { transition: var(--sink) !important; }
-  .work-list > li.is-lifted .work-card { transition: var(--rise) !important; }
+  .work-list > li.is-active .work-card { transition: var(--rise) !important; }
   .work-card__desc { transition: opacity 0.2s ease !important; }
   .work-card:hover .work-card__desc,
   .work-card:focus-within .work-card__desc { transition-delay: 0.15s !important; }
+  .work-item__info { transition: color 0.3s ease !important; }
+  .line.has-cut { transition: --hole 0.35s ease !important; }
+  .line.has-cut.is-cut { transition: --hole 0.35s ease 0.1s, --cut-l 0.35s cubic-bezier(.2, .7, .2, 1), --cut-r 0.35s cubic-bezier(.2, .7, .2, 1) !important; }
 }
