@@ -515,6 +515,54 @@ ul { padding: 0; list-style: none; }
 .work-item:hover .work-item__arrow { opacity: 1; transform: none; }
 .js .work-item__arrow { opacity: 0; transition: none; }
 
+/* Project cards: one per project in each work row. Hovering (or focusing) a
+   row brings in its cards as a fanned stack in a fixed spot to the right of
+   the title; leaving the row lets them go. Each card's place in the fan
+   comes from --k (its number) and --mid (the middle of the fan), set by home.js.
+   The cards don't catch the mouse, so moving to the next row swaps stacks. */
+.work-list > li { position: relative; }
+.work-cards {
+  position: absolute;
+  top: 50%;
+  right: 34%;                 /* in the empty space between the titles and the project count */
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+  z-index: 2;
+  --h: 210px;                 /* card height (width follows each category's shape) */
+  --step: 30px;               /* how far apart the cards fan out */
+  --turn: 4deg;               /* how much each card turns from the next */
+}
+.work-cards--branding { --h: 170px; --step: 46px; --turn: 5deg; }
+.work-cards--web      { --h: 160px; --step: 56px; --turn: 5deg; }
+.work-cards .work-card {     /* (.work-cards: beats the placeholder box style, .ph) */
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: var(--h);
+  aspect-ratio: 4 / 5;        /* posters */
+  min-height: 0;
+  background: var(--cream) linear-gradient(rgba(59, 0, 8, 0.05), rgba(59, 0, 8, 0.05));
+  box-shadow: 0 10px 30px rgba(59, 0, 8, 0.18);
+  --o: calc(var(--k) - var(--mid));  /* how far from the middle of the fan (− left, + right) */
+  transform: translate(-50%, -50%) translate(calc(var(--o) * var(--step) + 48px), 36px) scale(0.92);
+  opacity: 0;
+  transition: transform 0.4s cubic-bezier(.2, .7, .2, 1), opacity 0.25s ease;
+}
+.work-cards--branding .work-card { aspect-ratio: 4 / 3; }
+.work-cards--web .work-card      { aspect-ratio: 16 / 10; }
+.work-list > li:hover .work-card,
+.work-list > li:focus-within .work-card {
+  opacity: 1;
+  transform: translate(-50%, -50%)
+    translate(calc(var(--o) * var(--step)), calc(var(--o) * var(--o) * 2.5px))  /* a slight arc */
+    rotate(calc(var(--o) * var(--turn)));
+  transition-delay: calc(var(--k) * 35ms);  /* they fan out one after another */
+}
+
 
 
 /* ---------- 9. Scene 3: contact ---------- */
@@ -724,6 +772,37 @@ ul { padding: 0; list-style: none; }
 /* Phones, About page: the image boxes are simply there (no fade or drift) */
 @media (max-width: 699.98px) {
   .js .reveal .ph { opacity: 1; transform: none; transition: none; }
+
+  /* Phones, work list: no hover, so tapping a row opens its cards as a strip
+     under it that you swipe through (home.js adds .is-open) */
+  .work-cards {
+    position: static;
+    display: none;
+    width: auto;
+    height: auto;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding: 4px 0 20px;
+    pointer-events: auto;
+    scrollbar-width: none;
+    --h: 190px;
+  }
+  .work-cards::-webkit-scrollbar { display: none; }
+  .work-list > li.is-open .work-cards { display: flex; }
+  .work-cards .work-card,
+  .work-list > li:hover .work-card,
+  .work-list > li:focus-within .work-card {
+    position: relative;
+    flex: none;
+    opacity: 1;
+    transform: none;
+    transition: none;
+    scroll-snap-align: start;
+    box-shadow: none;
+  }
+  .work-cards--branding,
+  .work-cards--web { --h: 150px; }
 }
 .js.is-phone .scroll-space { display: none; }
 /* The sections stay see-through: the page background behind them is

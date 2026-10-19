@@ -53,9 +53,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 
   <!-- ?v=… makes browsers fetch fresh files after each update (change it every time you publish) -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261019b">
-  <script src="assets/js/core.js?v=20261019b" defer></script>
-  <script src="assets/js/home.js?v=20261019b" defer></script>
+  <link rel="stylesheet" href="assets/css/style.css?v=20261019c">
+  <script src="assets/js/core.js?v=20261019c" defer></script>
+  <script src="assets/js/home.js?v=20261019c" defer></script>
 </head>
 <body>
 
@@ -157,6 +157,19 @@
             <span class="work-item__info label" data-wind>[0] projects</span>
             <span class="work-item__arrow" aria-hidden="true">→</span>
           </a>
+          <!-- One card per project: shown as a fanned stack when you hover the row
+               (phones: tap the row to open them as a strip). Placeholders for now:
+               replace each <li> with the project's image. -->
+          <ul class="work-cards work-cards--posters" aria-label="Posters projects">
+            <li class="work-card ph"><span class="label">Poster 01</span></li>
+            <li class="work-card ph"><span class="label">Poster 02</span></li>
+            <li class="work-card ph"><span class="label">Poster 03</span></li>
+            <li class="work-card ph"><span class="label">Poster 04</span></li>
+            <li class="work-card ph"><span class="label">Poster 05</span></li>
+            <li class="work-card ph"><span class="label">Poster 06</span></li>
+            <li class="work-card ph"><span class="label">Poster 07</span></li>
+            <li class="work-card ph"><span class="label">Poster 08</span></li>
+          </ul>
         </li>
         <li>
           <!-- href="#" until the category page exists; then: work/branding/index.html -->
@@ -166,6 +179,15 @@
             <span class="work-item__info label" data-wind>[0] projects</span>
             <span class="work-item__arrow" aria-hidden="true">→</span>
           </a>
+          <!-- One card per project: shown as a fanned stack when you hover the row
+               (phones: tap the row to open them as a strip). Placeholders for now:
+               replace each <li> with the project's image. -->
+          <ul class="work-cards work-cards--branding" aria-label="Brand Identity projects">
+            <li class="work-card ph"><span class="label">Identity 01</span></li>
+            <li class="work-card ph"><span class="label">Identity 02</span></li>
+            <li class="work-card ph"><span class="label">Identity 03</span></li>
+            <li class="work-card ph"><span class="label">Identity 04</span></li>
+          </ul>
         </li>
         <li>
           <!-- href="#" until the category page exists; then: work/web/index.html -->
@@ -175,6 +197,14 @@
             <span class="work-item__info label" data-wind>[0] projects</span>
             <span class="work-item__arrow" aria-hidden="true">→</span>
           </a>
+          <!-- One card per project: shown as a fanned stack when you hover the row
+               (phones: tap the row to open them as a strip). Placeholders for now:
+               replace each <li> with the project's image. -->
+          <ul class="work-cards work-cards--web" aria-label="Web Design projects">
+            <li class="work-card ph"><span class="label">Website 01</span></li>
+            <li class="work-card ph"><span class="label">Website 02</span></li>
+            <li class="work-card ph"><span class="label">Website 03</span></li>
+          </ul>
         </li>
       </ul>
     </section>

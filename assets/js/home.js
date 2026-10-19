@@ -145,6 +145,34 @@ const sceneLive = (scene) => () => scene.lastVisibility !== 'hidden';  // (the l
 const workLines = makeLines('.section-head, .work-item', 'bottom', sceneLive(workScene));
 const contactLines = makeLines('.scene--contact .contact__bottom', 'top', sceneLive(contactScene));
 
+// Project cards (one per project in each work row; style.css shows them as a
+// fanned stack on hover). Each card learns its place in the fan here.
+// Phones: tapping a row opens its cards as a strip under it (and closes the others).
+document.querySelectorAll('.work-cards').forEach((list) => {
+  const cards = [...list.children];
+  cards.forEach((card, k) => {
+    card.style.setProperty('--k', k);
+    card.style.setProperty('--mid', (cards.length - 1) / 2);
+  });
+});
+if (smallScreen) {
+  document.querySelectorAll('.work-list > li').forEach((li) => {
+    const row = li.querySelector('.work-item');
+    if (!li.querySelector('.work-cards')) return;
+    row.setAttribute('aria-expanded', 'false');
+    row.addEventListener('click', () => {
+      const open = !li.classList.contains('is-open');
+      document.querySelectorAll('.work-list > li.is-open').forEach((other) => {
+        other.classList.remove('is-open');
+        other.querySelector('.work-item').setAttribute('aria-expanded', 'false');
+      });
+      li.classList.toggle('is-open', open);
+      row.setAttribute('aria-expanded', String(open));
+      remeasure();  // the rows below moved: lines, frost checks and the color edge measure again
+    });
+  });
+}
+
 // Work list arrows: flow in on the wind when you hover a row, flow out when you leave
 const arrowPieces = [...document.querySelectorAll('.work-item__arrow')].map((el) => {
   const pc = makePiece(el, { tilt: 20, blur: 5 });
