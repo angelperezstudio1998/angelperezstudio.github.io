@@ -517,65 +517,68 @@ ul { padding: 0; list-style: none; }
 
 /* Project cards: one per project in each work row. Hovering (or focusing) a
    row lifts the rows above it (and the heading) to open a space, and its cards
-   rise into it from behind the row's bottom line with a slight fade. The
-   bottom line itself never moves. home.js works out how far each row lifts the others (--opens,
-   from the card height and --air), sets the hovered one as --lift on the
-   work section and adds .is-lifted / .is-above.
-   Each card's place in the row comes from --k (its number) and --mid (the
-   middle), also set by home.js. */
-.work-list > li { position: relative; --air: 24px; }  /* space above and below the cards */
+   rise from behind the row's bottom line, side by side with equal gaps, and
+   settle just above the row's title, partly over the line above. The bottom
+   line itself never moves. home.js measures the row (--row) and works out how
+   far the rows above lift (--opens; the hovered row's goes on the work section
+   as --lift) and adds .is-lifted / .is-above. Each card's number (--k) and the
+   number of cards (--n) come from home.js too. */
+.work-list > li {
+  position: relative;
+  --air: 20px;                /* space between the cards and the row's title */
+  --cover: 0.12;              /* how much of a card sits over the line above (0.12 = 12%; more covers the title above) */
+}
 .section-head,
 .work-list > li { transition: translate 0.55s cubic-bezier(.2, .7, .2, 1); }  /* (translate: the heading already uses transform for the wind) */
 .is-above { translate: 0 calc(-1 * var(--lift, 0px)); }
-/* The opened space still belongs to the hovered row (so moving the mouse
-   through it doesn't drop the row) */
+/* The space above the hovered row still belongs to it (so moving the mouse
+   up over its cards doesn't switch to the row above) */
 .work-list > li.is-lifted::before {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
   bottom: 100%;
-  height: var(--lift);
+  height: var(--reach);
 }
 .work-cards {
   position: absolute;
-  bottom: 0;                  /* the row's bottom line */
-  right: 34%;                 /* in the empty space between the titles and the project count */
-  width: 0;
-  height: calc(100% + var(--lift, 0px));
+  left: 0;
+  right: 0;
+  bottom: calc(var(--row, 0px) + var(--air));  /* resting just above the row's title */
+  display: flex;
+  align-items: flex-end;
+  gap: var(--gap);
   margin: 0;
   padding: 0;
   list-style: none;
   pointer-events: none;
   z-index: 2;
-  clip-path: inset(-100vh -100vw 0 -100vw);  /* hidden below the line: the cards come up from behind it */
-  --h: 210px;                 /* card height (width follows each category's shape) */
-  --step: 34px;               /* how far apart the cards sit */
-  --turn: 1.5deg;             /* how much each card turns from the next */
+  /* Cut off at the row's bottom line: the cards come up from behind it */
+  clip-path: inset(-100vh -100vw calc(-1 * (var(--row, 0px) + var(--air))) -100vw);
+  --gap: 16px;                /* space between the cards */
+  --tallest: 30vh;            /* the cards are as big as fit across the row, up to this height
+                                 (and home.js's --fit: the heading must still clear the top bar) */
+  --ratio: 0.8;               /* card shape (width ÷ height): posters 4:5 */
 }
-.work-cards--branding { --h: 170px; --step: 52px; --turn: 2deg; }
-.work-cards--web      { --h: 160px; --step: 64px; --turn: 2deg; }
+.work-cards--branding { --ratio: 1.3333; }  /* 4:3 */
+.work-cards--web      { --ratio: 1.6; }     /* 16:10 */
 .work-cards .work-card {     /* (.work-cards: beats the placeholder box style, .ph) */
-  position: absolute;
-  left: 0;
-  bottom: var(--air);          /* resting a little above the line */
-  height: var(--h);
-  aspect-ratio: 4 / 5;        /* posters */
+  flex: none;
+  width: min(calc((100% - (var(--n) - 1) * var(--gap)) / var(--n)), calc(min(var(--tallest), var(--fit, 100vh)) * var(--ratio)));
+  aspect-ratio: var(--ratio);
   min-height: 0;
-  background: var(--cream) linear-gradient(rgba(59, 0, 8, 0.05), rgba(59, 0, 8, 0.05));
-  box-shadow: 0 10px 30px rgba(59, 0, 8, 0.18);
-  --o: calc(var(--k) - var(--mid));  /* how far from the middle (− left, + right) */
-  transform: translateX(-50%) translate(calc(var(--o) * var(--step)), calc(var(--h) + var(--air) + 40px)) rotate(calc(var(--o) * var(--turn)));
+  background: var(--cream) linear-gradient(rgba(59, 0, 8, 0.05), rgba(59, 0, 8, 0.05));  /* flat tint (placeholder) */
+  /* Hidden: all the way down, below the bottom line */
+  transform: translateY(calc(100% + var(--row, 0px) + var(--air) + 4px));
   opacity: 0;
-  transition: transform 0.45s cubic-bezier(.4, 0, .6, 1), opacity 0.3s ease;
+  transition: transform 0.45s cubic-bezier(.5, 0, .75, 0), opacity 0.2s ease 0.25s;
 }
-.work-cards--branding .work-card { aspect-ratio: 4 / 3; }
-.work-cards--web .work-card      { aspect-ratio: 16 / 10; }
 .work-list > li.is-lifted .work-card {
   opacity: 1;
-  transform: translateX(-50%) translate(calc(var(--o) * var(--step)), 0) rotate(calc(var(--o) * var(--turn)));
-  transition: transform 0.6s cubic-bezier(.2, .7, .2, 1), opacity 0.5s ease;
-  transition-delay: calc(80ms + var(--k) * 40ms);  /* they come up one after another, once the space opens */
+  transform: none;
+  transition: transform 0.7s cubic-bezier(.2, .7, .2, 1), opacity 0.35s ease;
+  transition-delay: calc(60ms + var(--k) * 45ms);  /* they come up one after another, left to right */
 }
 
 
@@ -802,21 +805,20 @@ ul { padding: 0; list-style: none; }
     pointer-events: auto;
     scrollbar-width: none;
     clip-path: none;
+    bottom: auto;
     --h: 190px;
   }
   .work-cards::-webkit-scrollbar { display: none; }
   .work-list > li.is-open .work-cards { display: flex; }
-  .work-cards .work-card,
-  .work-list > li:hover .work-card,
-  .work-list > li:focus-within .work-card {
+  .work-cards .work-card {
     position: relative;
-    bottom: auto;
     flex: none;
+    width: auto;
+    height: var(--h);
     opacity: 1;
     transform: none;
     transition: none;
     scroll-snap-align: start;
-    box-shadow: none;
   }
   .work-cards--branding,
   .work-cards--web { --h: 150px; }
@@ -860,9 +862,9 @@ ul { padding: 0; list-style: none; }
      start yourself by hovering, and the whole point of the work list */
   .section-head,
   .work-list > li { transition: translate 0.55s cubic-bezier(.2, .7, .2, 1) !important; }
-  .work-cards .work-card { transition: transform 0.45s cubic-bezier(.4, 0, .6, 1), opacity 0.3s ease !important; }
+  .work-cards .work-card { transition: transform 0.45s cubic-bezier(.5, 0, .75, 0), opacity 0.2s ease 0.25s !important; }
   .work-list > li.is-lifted .work-card {
-    transition: transform 0.6s cubic-bezier(.2, .7, .2, 1) calc(80ms + var(--k) * 40ms),
-                opacity 0.5s ease calc(80ms + var(--k) * 40ms) !important;
+    transition: transform 0.7s cubic-bezier(.2, .7, .2, 1) calc(60ms + var(--k) * 45ms),
+                opacity 0.35s ease calc(60ms + var(--k) * 45ms) !important;
   }
 }

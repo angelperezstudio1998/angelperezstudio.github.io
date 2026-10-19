@@ -145,15 +145,14 @@ const sceneLive = (scene) => () => scene.lastVisibility !== 'hidden';  // (the l
 const workLines = makeLines('.section-head, .work-item', 'bottom', sceneLive(workScene));
 const contactLines = makeLines('.scene--contact .contact__bottom', 'top', sceneLive(contactScene));
 
-// Project cards (one per project in each work row; style.css shows them as a
-// fanned stack on hover). Each card learns its place in the fan here.
+// Project cards (one per project in each work row; style.css shows them side
+// by side on hover). Each card learns its number (--k: they rise one after
+// another) and each row how many cards it has (--n: their width).
 // Phones: tapping a row opens its cards as a strip under it (and closes the others).
 document.querySelectorAll('.work-cards').forEach((list) => {
   const cards = [...list.children];
-  cards.forEach((card, k) => {
-    card.style.setProperty('--k', k);
-    card.style.setProperty('--mid', (cards.length - 1) / 2);
-  });
+  list.style.setProperty('--n', cards.length);
+  cards.forEach((card, k) => card.style.setProperty('--k', k));
 });
 // Bigger screens: hovering (or focusing) a row lifts the rows above it (and the
 // section heading) to open a space, and its cards rise into that space from
@@ -192,15 +191,28 @@ if (!smallScreen) {
   });
   workList.addEventListener('pointerleave', () => liftRow(null));
   workList.addEventListener('focusout', (e) => { if (!workList.contains(e.relatedTarget)) liftRow(null); });
-  // How much space each row opens: enough for its cards plus a little air
-  // above and below them, minus the row's own height
+  // How the cards sit (all from the card height): they rest --air above the
+  // row's title, and the rows above lift just enough that the cards cover
+  // part of the line above (--cover: how much of a card may sit over it).
+  // --row: the row's height; --opens: how far the rows above lift;
+  // --reach: the hovered row's area upward, so it keeps the mouse over its cards.
+  // The cards are also kept small enough that the heading, lifted, still
+  // clears the top bar (--fit: the tallest they may be).
+  const head = workScene.querySelector('.section-head');
   Site.onMeasure.unshift(() => {
     liftRow(null);
+    const room = head.offsetTop - document.querySelector('.site-header').offsetHeight - 12;  // (the scene fills the screen)
     workRows.forEach((li) => {
       const card = li.querySelector('.work-card');
       if (!card) return;
-      const air = parseFloat(getComputedStyle(li).getPropertyValue('--air')) || 0;
-      li.style.setProperty('--opens', `${Math.max(0, Math.round(card.offsetHeight + air * 2 - li.offsetHeight))}px`);
+      const css = getComputedStyle(li);
+      const air = parseFloat(css.getPropertyValue('--air')) || 0;
+      const cover = parseFloat(css.getPropertyValue('--cover')) || 0;
+      li.style.setProperty('--fit', `${Math.max(80, Math.floor((room - air) / (1 - cover)))}px`);
+      const h = card.offsetHeight;
+      li.style.setProperty('--row', `${li.offsetHeight}px`);
+      li.style.setProperty('--opens', `${Math.round(h * (1 - cover) + air)}px`);
+      li.style.setProperty('--reach', `${Math.round(h + air * 2)}px`);
     });
   });
 }
