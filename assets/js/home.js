@@ -279,6 +279,7 @@ function openProject(card) {
   popupBody.replaceChildren(page ? page.content.cloneNode(true)
     : Object.assign(document.createElement('div'), { className: 'ph project__image', innerHTML: '<span class="label">Project images</span>' }));
   popupCard = card;
+  root.classList.add('is-locked');  // the page behind can't scroll (style.css, "The project popup")
   projectPopup.showModal();
   projectPopup.scrollTop = 0;
 }
@@ -292,17 +293,17 @@ projectPopup.addEventListener('click', (e) => {  // a click outside the popup (o
   if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) projectPopup.close();
 });
 projectPopup.addEventListener('close', () => {
+  root.classList.remove('is-locked');
   if (popupCard && !popupCard.closest('.work-list > li').matches(':hover')) showCards(null);  // (the mouse may have left the row meanwhile)
   popupCard = null;
 });
-// While it's open, the wheel and touch scroll only the popup, never the page
-// behind it (the home page's scroll plays its animation)
+// While it's open, the page behind never scrolls (the home page's scroll
+// plays its animation): .is-locked stops the page itself, this stops the
+// wheel and touch outside the popup too (phones don't always obey the lock),
+// and the popup's own scrolling never carries on to the page (style.css,
+// overscroll-behavior).
 const keepScrollInPopup = (e) => {
-  if (!projectPopup.open) return;
-  const d = projectPopup;
-  const up = e.deltaY < 0, down = e.deltaY > 0;
-  const atTop = d.scrollTop <= 0, atEnd = d.scrollTop + d.clientHeight >= d.scrollHeight - 1;
-  if (!d.contains(e.target) || (e.type === 'wheel' && ((up && atTop) || (down && atEnd)))) e.preventDefault();
+  if (projectPopup.open && !projectPopup.contains(e.target)) e.preventDefault();
 };
 window.addEventListener('wheel', keepScrollInPopup, { passive: false });
 window.addEventListener('touchmove', keepScrollInPopup, { passive: false });
