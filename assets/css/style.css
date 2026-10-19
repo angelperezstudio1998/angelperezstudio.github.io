@@ -639,9 +639,13 @@ ul { padding: 0; list-style: none; }
   max-height: min(88vh, 1100px);
   margin: auto;
   padding: clamp(24px, 4vw, 56px);
-  border: 1px solid rgba(59, 0, 8, 0.18);  /* (a thin edge: it's cream on cream) */
+  border: 0;
   border-radius: 18px;
-  background: var(--cream);
+  /* Frosted glass: see-through and strongly blurred, so it takes on the
+     colors of what's behind it */
+  background: rgba(214, 199, 174, 0.35);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  backdrop-filter: blur(28px) saturate(1.4);
   color: var(--burgundy);
   overflow-y: auto;
   overscroll-behavior: contain;  /* scrolling it never scrolls the page behind */
@@ -679,7 +683,9 @@ ul { padding: 0; list-style: none; }
   margin: -8px -8px 0 16px;
   border: 1px solid rgba(59, 0, 8, 0.25);
   border-radius: 50%;
-  background: var(--cream);
+  background: rgba(214, 199, 174, 0.35);  /* glass too (it stays put while the page scrolls under it) */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   color: inherit;
   font-size: 22px;
   line-height: 1;
