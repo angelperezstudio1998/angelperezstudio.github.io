@@ -145,18 +145,16 @@ const sceneLive = (scene) => () => scene.lastVisibility !== 'hidden';  // (the l
 const workLines = makeLines('.section-head, .work-item', 'bottom', sceneLive(workScene));
 const contactLines = makeLines('.scene--contact .contact__bottom', 'top', sceneLive(contactScene));
 
-// Project cards (one per project in each work row; style.css shows them side
-// by side on hover). Each card learns its number (--k: they rise one after
-// another) and each row how many cards it has (--n: their width).
+// Project cards (one per project in each work row; style.css shows them small,
+// next to the row's title, on hover). Each card learns its number (--k: they
+// rise one after another, left to right).
 // Phones: tapping a row opens its cards as a strip under it (and closes the others).
 document.querySelectorAll('.work-cards').forEach((list) => {
-  const cards = [...list.children];
-  list.style.setProperty('--n', cards.length);
-  cards.forEach((card, k) => card.style.setProperty('--k', k));
+  [...list.children].forEach((card, k) => card.style.setProperty('--k', k));
 });
 // Bigger screens: hovering (or focusing) a row lifts the rows above it (and the
-// section heading) to open a space, and its cards rise into that space from
-// behind the row's bottom line, which stays put (style.css, "Project cards").
+// section heading) to open a space, and its cards rise from behind the row's
+// bottom line, which stays put (style.css, "Project cards").
 // What moved is told to the hover, the lines and the glass, so they still
 // line up with what you see.
 const workList = document.querySelector('.work-list');
@@ -189,30 +187,86 @@ if (!smallScreen) {
     li.addEventListener('pointerenter', () => liftRow(li));
     li.addEventListener('focusin', () => liftRow(li));
   });
-  workList.addEventListener('pointerleave', () => liftRow(null));
-  workList.addEventListener('focusout', (e) => { if (!workList.contains(e.relatedTarget)) liftRow(null); });
-  // How the cards sit (all from the card height): they rest --air above the
-  // row's title, and the rows above lift by the card height + --air above and
-  // below, so the cards never cover any text.
-  // --row: the row's height; --opens: how far the rows above lift (the
-  // hovered row's area upward too, so it keeps the mouse over its cards).
-  // The cards are also kept small enough that the heading, lifted, still
-  // clears the top bar (--fit: the tallest they may be).
+  workList.addEventListener('pointerleave', () => { if (!projectPopup.open) liftRow(null); });
+  workList.addEventListener('focusout', (e) => { if (!workList.contains(e.relatedTarget) && !projectPopup.open) liftRow(null); });
+
+  // Where each row's cards go and how big they are: they start after the
+  // title (plus its hover nudge) and must fit before the project count with
+  // one card grown (--grow); the rows above lift just enough for a grown card,
+  // and never so far that the heading would slide under the top bar.
   const head = workScene.querySelector('.section-head');
+  const px = (css, name) => parseFloat(css.getPropertyValue(name)) || 0;
   Site.onMeasure.unshift(() => {
     liftRow(null);
     const room = head.offsetTop - document.querySelector('.site-header').offsetHeight - 12;  // (the scene fills the screen)
     workRows.forEach((li) => {
-      const card = li.querySelector('.work-card');
-      if (!card) return;
-      const css = getComputedStyle(li);
-      const air = parseFloat(css.getPropertyValue('--air')) || 0;
-      li.style.setProperty('--fit', `${Math.max(80, Math.floor(room - air * 2))}px`);
-      li.style.setProperty('--row', `${li.offsetHeight}px`);
-      li.style.setProperty('--opens', `${Math.round(card.offsetHeight + air * 2)}px`);
+      const list = li.querySelector('.work-cards');
+      if (!list) return;
+      const css = getComputedStyle(list);
+      const air = px(css, '--air'), gap = px(css, '--gap'), grow = px(css, '--grow') || 1;
+      const ratio = px(css, '--ratio') || 1, most = px(css, '--most');
+      const title = li.querySelector('.work-item__title'), info = li.querySelector('.work-item__info');
+      const from = title.offsetLeft + title.offsetWidth + 16 + 32;  // (16: the title's hover nudge)
+      const width = info.offsetLeft - 32 - from;
+      const n = list.children.length;
+      const rowH = li.offsetHeight;
+      const small = Math.max(24, Math.floor(Math.min(
+        most,
+        (width - (n - 1) * gap) / (ratio * (n - 1 + grow)),  // fits across, with one card grown
+        (room + rowH - air * 2) / grow,                       // a grown card fits under the top bar
+      )));
+      list.style.setProperty('--from', `${from}px`);
+      list.style.setProperty('--small', `${small}px`);
+      li.style.setProperty('--opens', `${Math.max(0, Math.round(small * grow + air * 2 - rowH))}px`);
     });
   });
 }
+
+// ---- The project popup: clicking a card opens its project page ----
+// Filled in from the card: its row's title, its name and quick line, and its
+// page (a <template class="work-card__page"> after the card's button; without
+// one, a placeholder). Esc, the × or clicking outside it closes it.
+const projectPopup = document.querySelector('.project');
+const popupBody = projectPopup.querySelector('.project__body');
+let popupCard = null;  // the card that opened it (focus goes back there)
+
+function openProject(card) {
+  const name = card.querySelector('.work-card__name');
+  const desc = card.querySelector('.work-card__desc');
+  const page = card.querySelector('.work-card__page');
+  projectPopup.querySelector('.project__kind').textContent = card.parentElement.getAttribute('aria-label').replace(/ projects$/, '');  // its row ("Posters projects" → Posters)
+  projectPopup.querySelector('.project__title').textContent = name ? name.textContent : '';
+  projectPopup.querySelector('.project__lead').textContent = desc ? desc.textContent.replace(name ? name.textContent : '', '').trim() : '';
+  popupBody.replaceChildren(page ? page.content.cloneNode(true)
+    : Object.assign(document.createElement('div'), { className: 'ph project__image', innerHTML: '<span class="label">Project images</span>' }));
+  popupCard = card;
+  projectPopup.showModal();
+  projectPopup.scrollTop = 0;
+}
+
+document.querySelectorAll('.work-card__open').forEach((button) =>
+  button.addEventListener('click', () => openProject(button.closest('.work-card'))));
+projectPopup.querySelector('.project__close').addEventListener('click', () => projectPopup.close());
+projectPopup.addEventListener('click', (e) => {  // a click outside the popup (on the dimmed page)
+  if (e.target !== projectPopup) return;
+  const r = projectPopup.getBoundingClientRect();
+  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) projectPopup.close();
+});
+projectPopup.addEventListener('close', () => {
+  if (popupCard && !popupCard.closest('.work-list > li').matches(':hover')) liftRow(null);  // (the mouse may have left the row meanwhile)
+  popupCard = null;
+});
+// While it's open, the wheel and touch scroll only the popup, never the page
+// behind it (the home page's scroll plays its animation)
+const keepScrollInPopup = (e) => {
+  if (!projectPopup.open) return;
+  const d = projectPopup;
+  const up = e.deltaY < 0, down = e.deltaY > 0;
+  const atTop = d.scrollTop <= 0, atEnd = d.scrollTop + d.clientHeight >= d.scrollHeight - 1;
+  if (!d.contains(e.target) || (e.type === 'wheel' && ((up && atTop) || (down && atEnd)))) e.preventDefault();
+};
+window.addEventListener('wheel', keepScrollInPopup, { passive: false });
+window.addEventListener('touchmove', keepScrollInPopup, { passive: false });
 
 if (smallScreen) {
   document.querySelectorAll('.work-list > li').forEach((li) => {
