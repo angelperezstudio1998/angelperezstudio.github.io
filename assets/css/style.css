@@ -514,7 +514,8 @@ ul { padding: 0; list-style: none; }
    title. Hovering (or focusing) a row brings its cards up from behind the
    row's bottom line, one after another, with a slight fade. They may reach up
    over the lines above: where they do, those lines fade out near the cards.
-   Hovering a card makes it bigger still (it grows upward) and the cards after
+   Hovering a card (or reaching it with the keyboard) makes it bigger still
+   (it grows upward) and the cards after
    it slide right to keep the spacing. While its cards are out, the row's
    project count fades so they have room. Clicking a card opens its project
    page in the popup below.
@@ -569,7 +570,7 @@ ul { padding: 0; list-style: none; }
   transition: var(--rise);
 }
 .work-list > li.is-active .work-card:hover,
-.work-list > li.is-active .work-card:focus-within { height: calc(var(--small, var(--most)) * var(--grow)); }
+.work-list > li.is-active .work-card:has(:focus-visible) { height: calc(var(--small, var(--most)) * var(--grow)); }
 .work-cards .work-card__open {  /* the card itself: a button (its image goes inside); (.work-cards: beats .ph) */
   display: grid;
   place-items: end stretch;   /* the quick line sits at the bottom */
@@ -611,7 +612,7 @@ ul { padding: 0; list-style: none; }
   transition: opacity 0.2s ease;
 }
 .work-card:hover .work-card__desc,
-.work-card:focus-within .work-card__desc { opacity: 1; transition-delay: 0.15s; }
+.work-card:has(:focus-visible) .work-card__desc { opacity: 1; transition-delay: 0.15s; }
 .work-card__name { font-weight: 600; }
 
 /* Lines the cards cross fade out near them: a see-through stretch from
@@ -997,7 +998,7 @@ html.is-locked { overflow: hidden; }
   .work-list > li.is-active .work-card { transition: var(--rise) !important; }
   .work-card__desc { transition: opacity 0.2s ease !important; }
   .work-card:hover .work-card__desc,
-  .work-card:focus-within .work-card__desc { transition-delay: 0.15s !important; }
+  .work-card:has(:focus-visible) .work-card__desc { transition-delay: 0.15s !important; }
   .work-item__info { transition: color 0.3s ease !important; }
   .line.has-cut { transition: --hole 0.35s ease !important; }
   .line.has-cut.is-cut { transition: --hole 0.35s ease 0.1s, --cut-l 0.35s cubic-bezier(.2, .7, .2, 1), --cut-r 0.35s cubic-bezier(.2, .7, .2, 1) !important; }
