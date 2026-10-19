@@ -516,51 +516,66 @@ ul { padding: 0; list-style: none; }
 .js .work-item__arrow { opacity: 0; transition: none; }
 
 /* Project cards: one per project in each work row. Hovering (or focusing) a
-   row brings in its cards as a fanned stack in a fixed spot to the right of
-   the title; leaving the row lets them go. Each card's place in the fan
-   comes from --k (its number) and --mid (the middle of the fan), set by home.js.
-   The cards don't catch the mouse, so moving to the next row swaps stacks. */
-.work-list > li { position: relative; }
+   row lifts the rows above it (and the heading) to open a space, and its cards
+   rise into it from behind the row's bottom line with a slight fade. The
+   bottom line itself never moves. home.js works out how far each row lifts the others (--opens,
+   from the card height and --air), sets the hovered one as --lift on the
+   work section and adds .is-lifted / .is-above.
+   Each card's place in the row comes from --k (its number) and --mid (the
+   middle), also set by home.js. */
+.work-list > li { position: relative; --air: 24px; }  /* space above and below the cards */
+.section-head,
+.work-list > li { transition: translate 0.55s cubic-bezier(.2, .7, .2, 1); }  /* (translate: the heading already uses transform for the wind) */
+.is-above { translate: 0 calc(-1 * var(--lift, 0px)); }
+/* The opened space still belongs to the hovered row (so moving the mouse
+   through it doesn't drop the row) */
+.work-list > li.is-lifted::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: var(--lift);
+}
 .work-cards {
   position: absolute;
-  top: 50%;
+  bottom: 0;                  /* the row's bottom line */
   right: 34%;                 /* in the empty space between the titles and the project count */
   width: 0;
-  height: 0;
+  height: calc(100% + var(--lift, 0px));
   margin: 0;
   padding: 0;
   list-style: none;
   pointer-events: none;
   z-index: 2;
+  clip-path: inset(-100vh -100vw 0 -100vw);  /* hidden below the line: the cards come up from behind it */
   --h: 210px;                 /* card height (width follows each category's shape) */
-  --step: 30px;               /* how far apart the cards fan out */
-  --turn: 4deg;               /* how much each card turns from the next */
+  --step: 34px;               /* how far apart the cards sit */
+  --turn: 1.5deg;             /* how much each card turns from the next */
 }
-.work-cards--branding { --h: 170px; --step: 46px; --turn: 5deg; }
-.work-cards--web      { --h: 160px; --step: 56px; --turn: 5deg; }
+.work-cards--branding { --h: 170px; --step: 52px; --turn: 2deg; }
+.work-cards--web      { --h: 160px; --step: 64px; --turn: 2deg; }
 .work-cards .work-card {     /* (.work-cards: beats the placeholder box style, .ph) */
   position: absolute;
   left: 0;
-  top: 0;
+  bottom: var(--air);          /* resting a little above the line */
   height: var(--h);
   aspect-ratio: 4 / 5;        /* posters */
   min-height: 0;
   background: var(--cream) linear-gradient(rgba(59, 0, 8, 0.05), rgba(59, 0, 8, 0.05));
   box-shadow: 0 10px 30px rgba(59, 0, 8, 0.18);
-  --o: calc(var(--k) - var(--mid));  /* how far from the middle of the fan (− left, + right) */
-  transform: translate(-50%, -50%) translate(calc(var(--o) * var(--step) + 48px), 36px) scale(0.92);
+  --o: calc(var(--k) - var(--mid));  /* how far from the middle (− left, + right) */
+  transform: translateX(-50%) translate(calc(var(--o) * var(--step)), calc(var(--h) + var(--air) + 40px)) rotate(calc(var(--o) * var(--turn)));
   opacity: 0;
-  transition: transform 0.4s cubic-bezier(.2, .7, .2, 1), opacity 0.25s ease;
+  transition: transform 0.45s cubic-bezier(.4, 0, .6, 1), opacity 0.3s ease;
 }
 .work-cards--branding .work-card { aspect-ratio: 4 / 3; }
 .work-cards--web .work-card      { aspect-ratio: 16 / 10; }
-.work-list > li:hover .work-card,
-.work-list > li:focus-within .work-card {
+.work-list > li.is-lifted .work-card {
   opacity: 1;
-  transform: translate(-50%, -50%)
-    translate(calc(var(--o) * var(--step)), calc(var(--o) * var(--o) * 2.5px))  /* a slight arc */
-    rotate(calc(var(--o) * var(--turn)));
-  transition-delay: calc(var(--k) * 35ms);  /* they fan out one after another */
+  transform: translateX(-50%) translate(calc(var(--o) * var(--step)), 0) rotate(calc(var(--o) * var(--turn)));
+  transition: transform 0.6s cubic-bezier(.2, .7, .2, 1), opacity 0.5s ease;
+  transition-delay: calc(80ms + var(--k) * 40ms);  /* they come up one after another, once the space opens */
 }
 
 
@@ -786,6 +801,7 @@ ul { padding: 0; list-style: none; }
     padding: 4px 0 20px;
     pointer-events: auto;
     scrollbar-width: none;
+    clip-path: none;
     --h: 190px;
   }
   .work-cards::-webkit-scrollbar { display: none; }
@@ -794,6 +810,7 @@ ul { padding: 0; list-style: none; }
   .work-list > li:hover .work-card,
   .work-list > li:focus-within .work-card {
     position: relative;
+    bottom: auto;
     flex: none;
     opacity: 1;
     transform: none;
@@ -839,4 +856,13 @@ ul { padding: 0; list-style: none; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition: none !important; animation: none !important; }
+  /* Except the work rows opening and their cards rising: a small motion you
+     start yourself by hovering, and the whole point of the work list */
+  .section-head,
+  .work-list > li { transition: translate 0.55s cubic-bezier(.2, .7, .2, 1) !important; }
+  .work-cards .work-card { transition: transform 0.45s cubic-bezier(.4, 0, .6, 1), opacity 0.3s ease !important; }
+  .work-list > li.is-lifted .work-card {
+    transition: transform 0.6s cubic-bezier(.2, .7, .2, 1) calc(80ms + var(--k) * 40ms),
+                opacity 0.5s ease calc(80ms + var(--k) * 40ms) !important;
+  }
 }

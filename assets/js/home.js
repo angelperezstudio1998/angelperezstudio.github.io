@@ -155,6 +155,56 @@ document.querySelectorAll('.work-cards').forEach((list) => {
     card.style.setProperty('--mid', (cards.length - 1) / 2);
   });
 });
+// Bigger screens: hovering (or focusing) a row lifts the rows above it (and the
+// section heading) to open a space, and its cards rise into that space from
+// behind the row's bottom line, which stays put (style.css, "Project cards").
+// What moved is told to the hover, the lines and the glass, so they still
+// line up with what you see.
+const workList = document.querySelector('.work-list');
+const workRows = [...workList.children];
+let liftedRow = null, liftedBy = 0;
+
+function shiftAbove(row, dy) {
+  const moved = [workScene.querySelector('.section-head'), ...workRows.slice(0, workRows.indexOf(row))];
+  const inside = (el) => moved.some((m) => m.contains(el));
+  moved.forEach((m) => m.classList.toggle('is-above', dy < 0));
+  Site.hoverPieces.forEach((pc) => { if (inside(pc.el)) pc.cy += dy; });
+  lines.forEach((ln) => { if (inside(ln.host)) ln.y += dy; });
+  glassHosts.forEach((g) => { if (g.box && inside(g.el)) { g.box.top += dy; g.box.bottom += dy; } });
+}
+
+function liftRow(row) {
+  if (row === liftedRow) return;
+  if (liftedRow) { liftedRow.classList.remove('is-lifted'); shiftAbove(liftedRow, liftedBy); }
+  liftedRow = row;
+  if (!row) return;
+  liftedBy = parseFloat(row.style.getPropertyValue('--opens')) || 0;
+  workScene.style.setProperty('--lift', `${liftedBy}px`);
+  row.classList.add('is-lifted');
+  shiftAbove(row, -liftedBy);
+}
+
+if (!smallScreen) {
+  workRows.forEach((li) => {
+    if (!li.querySelector('.work-cards')) return;
+    li.addEventListener('pointerenter', () => liftRow(li));
+    li.addEventListener('focusin', () => liftRow(li));
+  });
+  workList.addEventListener('pointerleave', () => liftRow(null));
+  workList.addEventListener('focusout', (e) => { if (!workList.contains(e.relatedTarget)) liftRow(null); });
+  // How much space each row opens: enough for its cards plus a little air
+  // above and below them, minus the row's own height
+  Site.onMeasure.unshift(() => {
+    liftRow(null);
+    workRows.forEach((li) => {
+      const card = li.querySelector('.work-card');
+      if (!card) return;
+      const air = parseFloat(getComputedStyle(li).getPropertyValue('--air')) || 0;
+      li.style.setProperty('--opens', `${Math.max(0, Math.round(card.offsetHeight + air * 2 - li.offsetHeight))}px`);
+    });
+  });
+}
+
 if (smallScreen) {
   document.querySelectorAll('.work-list > li').forEach((li) => {
     const row = li.querySelector('.work-item');
