@@ -573,37 +573,50 @@ ul { padding: 0; list-style: none; }
 .work-list > li.is-active .work-card:has(:focus-visible) { height: calc(var(--small, var(--most)) * var(--grow)); }
 .work-cards .work-card__open {  /* the card itself: a button (its image goes inside); (.work-cards: beats .ph) */
   display: grid;
-  place-items: end stretch;   /* the quick line sits at the bottom */
   width: 100%;
   height: 100%;
   min-height: 0;
   padding: 0;
-  border-radius: 10px;
-  overflow: hidden;           /* (the image follows the rounded corners) */
-  background: var(--cream) linear-gradient(rgba(59, 0, 8, 0.05), rgba(59, 0, 8, 0.05));  /* flat tint (placeholder) */
+  border: 0;
+  background: none;
   font: inherit;
   color: inherit;
   text-align: left;
   cursor: pointer;
 }
-.work-card__open > img { grid-area: 1 / 1; width: 100%; height: 100%; object-fit: cover; }
-.work-card__open:focus { outline: none; }
-.work-card__open:focus-visible { outline: 1px solid var(--fg-3); outline-offset: 3px; }
-/* The quick line about the project, inside the card at the bottom, on a
-   frosted strip so it reads on any image. Only on the big (hovered) card. */
+.work-card__open:focus { outline: none; }  /* (keyboard focus shows as the card growing, with its quick line) */
+/* The image (or, for now, a placeholder tint) has no hard edges: it fades to
+   transparent all around (--soft: how much of each side fades) */
+.work-card__open::before,
+.work-card__open > img {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  --soft: 22%;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent);
+  -webkit-mask-composite: source-in;
+          mask-image:
+    linear-gradient(to right, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent);
+          mask-composite: intersect;
+}
+.work-card__open::before { content: ""; background: rgba(59, 0, 8, 0.1); }  /* (placeholder) */
+.work-card__open:has(img)::before { content: none; }
+/* The quick line about the project, inside the card at the bottom: no box,
+   just the text with a soft cream glow so it reads on any image. Only on the
+   big (hovered) card. */
 .work-card__desc {
   grid-area: 1 / 1;
   align-self: end;
-  margin: 6px;
-  border: solid transparent;   /* (space around the text as a border, not padding: a third line can't peek into it) */
-  border-width: 5px 8px;
-  border-radius: 6px;
-  background: rgba(214, 199, 174, 0.85);  /* cream, slightly see-through */
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  position: relative;          /* (above the image) */
+  margin: 0 14% 12%;
   color: var(--burgundy);
   font-size: 11px;
   line-height: 1.3;
+  text-shadow: 0 0 6px var(--cream), 0 0 12px var(--cream), 0 0 2px var(--cream);
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;      /* at most two lines */
@@ -634,56 +647,82 @@ ul { padding: 0; list-style: none; }
 }
 
 /* The project popup (a card's project page). home.js fills it in and opens
-   it; Esc, the × or clicking outside closes it. */
+   it; Esc, the × or clicking outside closes it.
+   No hard edges: it's frosted glass that fades to transparent all around
+   (--soft), and it appears with a water ripple: a ring spreading from the
+   card you clicked (--rx, --ry, set by home.js) reveals it, with a soft edge
+   (--ring); closing pulls it back in. */
+@property --reveal { syntax: "<length>"; inherits: false; initial-value: 0px; }
 .project {
-  width: min(960px, calc(100vw - 2 * var(--gutter)));
-  max-height: min(88vh, 1100px);
+  width: min(1040px, calc(100vw - 2 * var(--gutter)));
+  max-width: none;
+  max-height: min(92vh, 1160px);
   margin: auto;
-  padding: clamp(24px, 4vw, 56px);
-  /* Frosted glass: translucent white over a strong blur of what's behind it,
-     a soft highlight across it (brighter top left) and a thin light edge */
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.18));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),  /* light catching the top edge */
-    0 18px 50px rgba(59, 0, 8, 0.12),        /* a slight soft shadow under it */
-    0 2px 8px rgba(59, 0, 8, 0.06);
+  padding: var(--soft);       /* (the content stays clear of the faded edges) */
+  border: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.3));
   -webkit-backdrop-filter: blur(30px) saturate(1.3);
   backdrop-filter: blur(30px) saturate(1.3);
   color: var(--burgundy);
+  overflow: hidden;
+  --soft: 64px;
+  --ring: 140px;
+  --reveal: 0px;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
+    radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), #000 calc(var(--reveal) - var(--ring)), transparent var(--reveal));
+  -webkit-mask-composite: source-in, source-in;
+          mask-image:
+    linear-gradient(to right, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
+    radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), #000 calc(var(--reveal) - var(--ring)), transparent var(--reveal));
+          mask-composite: intersect, intersect;
+  transition: --reveal 0.55s cubic-bezier(.5, 0, .75, 0);  /* closing: drawn back in */
+}
+/* What scrolls is the inside, within the solid middle (so its scrollbar
+   shows); its content fades out softly at the top and bottom as it scrolls.
+   The bar: thin, rounded, burgundy, on a see-through track, no arrow
+   buttons. Chrome, Edge and Safari use the ::-webkit-scrollbar parts;
+   Firefox the two standard properties. */
+.project__inner {
+  max-height: calc(min(92vh, 1160px) - 2 * var(--soft));
+  padding: 32px clamp(0px, 3vw, 32px);
   overflow-y: auto;
   overscroll-behavior: contain;  /* scrolling it never scrolls the page behind */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 32px, #000 calc(100% - 32px), transparent);
+          mask-image: linear-gradient(to bottom, transparent, #000 32px, #000 calc(100% - 32px), transparent);
 }
-/* Its scrollbar: a thin rounded burgundy bar on a see-through track, no
-   arrow buttons, kept clear of the rounded corners. Chrome, Edge and Safari
-   use the ::-webkit-scrollbar parts; Firefox the two standard properties. */
-.project::-webkit-scrollbar { width: 14px; }
-.project::-webkit-scrollbar-track { background: transparent; margin: 18px 0; }
-.project::-webkit-scrollbar-thumb {
+.project__inner:focus { outline: none; }  /* (it gets the focus when the popup opens, so the arrow keys scroll it; no box drawn around it) */
+.project__inner::-webkit-scrollbar { width: 14px; }
+.project__inner::-webkit-scrollbar-track { background: transparent; margin: 24px 0; }
+.project__inner::-webkit-scrollbar-thumb {
   border: 4px solid transparent;  /* (space around the bar inside its 14px) */
   border-radius: 7px;
   background: rgba(59, 0, 8, 0.3) padding-box;
 }
-.project::-webkit-scrollbar-thumb:hover { background-color: rgba(59, 0, 8, 0.5); }
-.project::-webkit-scrollbar-button { display: none; }
+.project__inner::-webkit-scrollbar-thumb:hover { background-color: rgba(59, 0, 8, 0.5); }
+.project__inner::-webkit-scrollbar-button { display: none; }
 @supports not selector(::-webkit-scrollbar) {
-  .project { scrollbar-width: thin; scrollbar-color: rgba(59, 0, 8, 0.3) transparent; }
+  .project__inner { scrollbar-width: thin; scrollbar-color: rgba(59, 0, 8, 0.3) transparent; }
 }
-.project::backdrop {           /* no tint, no pattern: the page only slightly blurred, so the glass reads against it */
+.project.is-shown {
+  --reveal: var(--reveal-to, 2000px);  /* (home.js: far enough to cover it all) */
+  transition: --reveal 0.9s cubic-bezier(.25, .6, .3, 1);  /* opening: spreads out like a ripple, slowing down */
+}
+.project::backdrop {           /* no tint: the page only slightly blurred, so the glass reads against it */
   background-color: transparent;
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
+  opacity: 0;
+  transition: opacity 0.5s ease;
 }
+.project.is-shown::backdrop { opacity: 1; }
 /* While it's open the page behind can't scroll (home.js adds .is-locked).
    The page always keeps its scrollbar's space, so locking it doesn't make
    everything shift sideways. */
 html { scrollbar-gutter: stable; }
 html.is-locked { overflow: hidden; }
-.project[open] { animation: project-in 0.3s cubic-bezier(.2, .7, .2, 1); }
-.project[open]::backdrop { animation: project-fade 0.3s ease; }
-@keyframes project-in { from { opacity: 0; transform: translateY(16px) scale(0.98); } }
-@keyframes project-fade { from { opacity: 0; } }
 .project__close {
   position: sticky;
   top: 0;
@@ -691,16 +730,16 @@ html.is-locked { overflow: hidden; }
   width: 40px;
   height: 40px;
   margin: -8px -8px 0 16px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.4);  /* the same glass (it stays put while the popup scrolls under it) */
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.5);
   color: inherit;
   font-size: 22px;
   line-height: 1;
   cursor: pointer;
 }
+.project__close:focus { outline: none; }
+.project__close:focus-visible { background: rgba(255, 255, 255, 0.9); }
 .project__kind { color: var(--fg-3); }
 .project__title {
   margin: 10px 0 12px;
@@ -954,6 +993,9 @@ html.is-locked { overflow: hidden; }
   }
   .work-card__desc { opacity: 1; font-size: 12px; }  /* (no hover: always shown) */
   .project__pair { grid-template-columns: 1fr; }
+  .project { width: calc(100vw - 16px); --soft: 28px; --ring: 90px; }  /* (narrow screens: a thinner faded edge) */
+  .project__inner { padding: 24px 6px; }
+  .project__close { margin-right: 0; }
   .work-cards--branding,
   .work-cards--web { --h: 150px; }
 }
@@ -1001,5 +1043,8 @@ html.is-locked { overflow: hidden; }
   .work-card:has(:focus-visible) .work-card__desc { transition-delay: 0.15s !important; }
   .work-item__info { transition: color 0.3s ease !important; }
   .line.has-cut { transition: --hole 0.35s ease !important; }
+  .project { transition: --reveal 0.55s cubic-bezier(.5, 0, .75, 0) !important; }
+  .project.is-shown { transition: --reveal 0.9s cubic-bezier(.25, .6, .3, 1) !important; }
+  .project::backdrop { transition: opacity 0.5s ease !important; }
   .line.has-cut.is-cut { transition: --hole 0.35s ease 0.1s, --cut-l 0.35s cubic-bezier(.2, .7, .2, 1), --cut-r 0.35s cubic-bezier(.2, .7, .2, 1) !important; }
 }

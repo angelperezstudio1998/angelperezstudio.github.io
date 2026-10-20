@@ -53,9 +53,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 
   <!-- ?v=… makes browsers fetch fresh files after each update (change it every time you publish) -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261019t">
-  <script src="assets/js/core.js?v=20261019t" defer></script>
-  <script src="assets/js/home.js?v=20261019t" defer></script>
+  <link rel="stylesheet" href="assets/css/style.css?v=20261020a">
+  <script src="assets/js/core.js?v=20261020a" defer></script>
+  <script src="assets/js/home.js?v=20261020a" defer></script>
 </head>
 <body>
 
@@ -254,11 +254,13 @@
   <!-- The project popup: a card's project page (filled in by home.js from the
        card that was clicked: its row, name, quick line and page template) -->
   <dialog class="project" aria-labelledby="project-title">
-    <button class="project__close" type="button" aria-label="Close">×</button>
-    <p class="label project__kind"></p>
-    <h2 class="project__title" id="project-title"></h2>
-    <p class="project__lead"></p>
-    <div class="project__body"></div>
+    <div class="project__inner">
+      <button class="project__close" type="button" aria-label="Close">×</button>
+      <p class="label project__kind"></p>
+      <h2 class="project__title" id="project-title"></h2>
+      <p class="project__lead"></p>
+      <div class="project__body"></div>
+    </div>
   </dialog>
 
   <!-- Invisible tall block that gives the page its scroll length (set by home.js) -->

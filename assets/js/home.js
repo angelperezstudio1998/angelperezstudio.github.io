@@ -272,10 +272,16 @@ if (smallScreen) {
 // ---- The project popup: clicking a card opens its project page ----
 // Filled in from the card: its row's name, its name and quick line, and its
 // page (a <template class="work-card__page"> after the card's button; without
-// one, a placeholder). Esc, the × or clicking outside it closes it.
+// one, a placeholder). It appears with a water ripple from the card: the page
+// ripples from there, and a ring spreading from the same spot reveals the
+// popup (style.css: --reveal). Esc, the × or clicking outside it closes it:
+// the ring draws back in, then it's gone.
 const projectPopup = document.querySelector('.project');
+const popupInner = projectPopup.querySelector('.project__inner');
 const popupBody = projectPopup.querySelector('.project__body');
+const POPUP_CLOSE_MS = 550;  // = the closing --reveal transition in style.css
 let popupButton = null, popupByPointer = false;  // the card's button that opened it, and whether by mouse/touch
+let popupClosing = 0;        // (the timer while it draws back in)
 
 // While it's open the page behind never scrolls (the home page's scroll plays
 // its animation): .is-locked stops the page itself (style.css), this stops
@@ -283,7 +289,8 @@ let popupButton = null, popupByPointer = false;  // the card's button that opene
 // lock). Only listening while it's open keeps scrolling smooth the rest of the time.
 const keepScrollInPopup = (e) => { if (!projectPopup.contains(e.target)) e.preventDefault(); };
 
-function openProject(button, byPointer) {
+// x, y: where it was clicked (on screen)
+function openProject(button, byPointer, x, y) {
   const card = button.closest('.work-card');
   const name = card.querySelector('.work-card__name').textContent;
   const page = card.querySelector('.work-card__page');
@@ -297,19 +304,40 @@ function openProject(button, byPointer) {
   root.classList.add('is-locked');
   window.addEventListener('wheel', keepScrollInPopup, { passive: false });
   window.addEventListener('touchmove', keepScrollInPopup, { passive: false });
+  clearTimeout(popupClosing);
+  projectPopup.classList.remove('is-shown');
   projectPopup.showModal();
-  projectPopup.scrollTop = 0;
+  popupInner.scrollTop = 0;
+  // The ring starts where it was clicked and spreads far enough to cover it all
+  const r = projectPopup.getBoundingClientRect();
+  const rx = x - r.left, ry = y - r.top;
+  const far = Math.max(...[[0, 0], [r.width, 0], [0, r.height], [r.width, r.height]].map(([cx, cy]) => Math.hypot(cx - rx, cy - ry)));
+  projectPopup.style.setProperty('--rx', `${Math.round(rx)}px`);
+  projectPopup.style.setProperty('--ry', `${Math.round(ry)}px`);
+  projectPopup.style.setProperty('--reveal-to', `${Math.round(far + 160)}px`);  // (+ the ring's soft edge)
+  getComputedStyle(projectPopup).getPropertyValue('--reveal');  // (start from nothing, so it spreads)
+  projectPopup.classList.add('is-shown');
+  background.addDrop(x, y);  // the page ripples from the same spot
+}
+
+// Draw the ring back in, then close
+function closeProject() {
+  if (!projectPopup.open || !projectPopup.classList.contains('is-shown')) return;
+  projectPopup.classList.remove('is-shown');
+  popupClosing = setTimeout(() => projectPopup.close(), POPUP_CLOSE_MS);
 }
 
 document.querySelectorAll('.work-card__open').forEach((button) =>
-  button.addEventListener('click', (e) => openProject(button, e.detail > 0)));  // (detail 0: Enter or Space)
-projectPopup.querySelector('.project__close').addEventListener('click', () => projectPopup.close());
-projectPopup.addEventListener('click', (e) => {  // a click outside the popup (on the page around it)
-  if (e.target !== projectPopup) return;
-  const r = projectPopup.getBoundingClientRect();
-  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) projectPopup.close();
-});
+  button.addEventListener('click', (e) => {
+    const byPointer = e.detail > 0;  // (detail 0: Enter or Space)
+    const r = button.getBoundingClientRect();
+    openProject(button, byPointer, byPointer ? e.clientX : r.left + r.width / 2, byPointer ? e.clientY : r.top + r.height / 2);
+  }));
+projectPopup.querySelector('.project__close').addEventListener('click', closeProject);
+projectPopup.addEventListener('click', (e) => { if (e.target === projectPopup) closeProject(); });  // outside its content (the faded edge or the page around it)
+projectPopup.addEventListener('cancel', (e) => { e.preventDefault(); closeProject(); });  // Esc
 projectPopup.addEventListener('close', () => {
+  projectPopup.classList.remove('is-shown');
   root.classList.remove('is-locked');
   window.removeEventListener('wheel', keepScrollInPopup);
   window.removeEventListener('touchmove', keepScrollInPopup);
