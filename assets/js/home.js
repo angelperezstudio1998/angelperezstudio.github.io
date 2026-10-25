@@ -284,7 +284,7 @@ const projectPopup = document.querySelector('.project');
 const popupList = projectPopup.querySelector('.project__list');
 const popupInner = projectPopup.querySelector('.project__inner');
 const popupBody = projectPopup.querySelector('.project__body');
-const POPUP_CLOSE_MS = 550;  // = the closing transitions in style.css
+const POPUP_CLOSE_MS = 900;  // = --close in style.css (the ripple drawing back)
 const POPUP_SWITCH_MS = 250; // = .project__inner's fade in style.css
 let popupCard = null;        // the card whose project is showing
 let popupButton = null, popupByPointer = false;  // the card's button that opened it, and whether by mouse/touch
@@ -339,6 +339,9 @@ function fillProject(card) {
     }));
   }
   popupList.querySelectorAll('.project__item').forEach((item) => item.setAttribute('aria-current', String(item.card === card)));
+  // Its color (data-color on the card, e.g. data-color="#1d3557"; burgundy without one)
+  if (card.dataset.color) root.style.setProperty('--project-color', card.dataset.color);
+  else root.style.removeProperty('--project-color');
   popupCard = card;
 }
 
@@ -354,7 +357,17 @@ function openProject(card, { byPointer = false, push = true } = {}) {
   window.addEventListener('wheel', keepScrollInPopup, { passive: false });
   window.addEventListener('touchmove', keepScrollInPopup, { passive: false });
   if (!projectPopup.open) {
+    if (!projectPopup.style.getPropertyValue('--pattern')) {  // (the drop pattern for the ripple's crests, made once)
+      projectPopup.style.setProperty('--pattern', `url("${background.patternTile(COLOR.cream, 0.75)}")`);
+      projectPopup.style.setProperty('--pattern-size', `${TILE_W}px ${TILE_H}px`);
+    }
     projectPopup.classList.remove('is-shown');
+    // The rings start just off the right edge (style.css: at 115% across,
+    // half way down) and go just far enough for the last one to cross the
+    // screen, so the whole opening is spent on screen
+    const css = getComputedStyle(projectPopup);
+    const w = window.innerWidth, h = window.innerHeight;
+    projectPopup.style.setProperty('--reveal-to', `${Math.round(Math.hypot(w * 1.15, h / 2) + parseFloat(css.getPropertyValue('--wavelength')) * 3.4)}px`);
     projectPopup.showModal();
     popupInner.focus({ preventScroll: true });  // (so the arrow keys scroll the project)
     getComputedStyle(projectPopup).getPropertyValue('--reveal');  // (start from nothing, so it spreads)
