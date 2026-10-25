@@ -3,29 +3,29 @@
 // water, drawn with WebGL; home.js starts it with waterIntro())
 // =========================================================================
 //
-// Seen from above: the logo comes up toward you from under the burgundy
-// water. While it's deep, the water's color swallows it (it's burgundy
-// too); as it rises it grows, the cream comes through, the surface bulges
-// over it and bends it (refraction), and its shadow on the floor below
-// moves away and softens as it lifts. When it breaks the surface, a film of
-// burgundy water stays on top and runs off, clearing from the middle of
-// each letter outward, spilling over the edges into the water (lit by the
-// light catching it) and sending ripples out. Then the real logo takes over.
+// Seen from above, like a hand coming out of water, but the water is
+// burgundy and the logo is a flat, solid shape (it never bends). It comes
+// up toward you out of the burgundy, growing a little, its shadow on the
+// floor below moving away and softening as it lifts. When it breaks the
+// surface it's covered in burgundy liquid, which runs off its flat top: the
+// middle of each letter clears first, the liquid pulling back to the edges
+// in streaks, a few beads left behind, then pouring over the edges into the
+// water (with light catching it) and sending ripples out. Then the real
+// logo takes over.
 //
 // How: the logo is drawn once into a picture, plus soft (blurred) versions
-// of it that give its rounded "height". One shader works out, for every
-// pixel, the water's surface (and so the light and the bending), how deep
-// the logo is (and so how much burgundy is in front of it), the film, the
-// spill and the shadow.
+// of it (which say how far each point is from a letter's edge, so which way
+// the liquid runs). One shader works out, for every pixel, how much liquid
+// is on the logo, the liquid pouring off, the light on it and the shadow.
 // =========================================================================
 
 const WATER = {
   delay: 300,      // wait after the page loads before it starts rising (ms)
   rise: 2600,      // how long it takes to come up to the surface (ms)
-  from: 0.76,      // how big it starts (1 = full size): smaller = deeper
+  from: 0.86,      // how big it starts (1 = full size): smaller = deeper
   breakAt: 0.86,   // when it breaks the surface (share of the way up)
-  run: 1700,       // how long the water film takes to run off (ms)
-  spill: 1900,     // how long the water spilling over the edges lasts (ms)
+  run: 3200,       // how long the liquid takes to run off it (ms)
+  spill: 2300,     // how long the liquid keeps pouring over the edges (ms)
   ripples: 8,      // ripples the water makes as it pours off
   handover: 450,   // crossfade to the real logo (ms)
 };
@@ -38,16 +38,15 @@ void main() { vUv = vec2(aPos.x * 0.5 + 0.5, 0.5 - aPos.y * 0.5); gl_Position = 
 const FRAG = `
 precision highp float;
 uniform sampler2D uLogo;   // the logo (cream)
-uniform sampler2D uField;  // r: its shape, g: softly rounded, b: very soft (the bulge)
+uniform sampler2D uField;  // r: its shape, g: softly rounded (1 deep inside a letter, lower near its edges), b: very soft
 uniform vec2 uRes;         // canvas size (css px)
 uniform vec2 uC;           // the logo's middle (0-1)
 uniform float uLogoH;      // the logo's height (share of the canvas)
 uniform float uR;          // how far it has come up (0 = deep, 1 = at the surface)
-uniform float uSize;       // how big it looks (it grows as it comes toward you)
-uniform float uFilm;       // how far the water film has run off (0 = covering, 1 = gone)
-uniform float uSpill;      // how much water is pouring over the edges (0-1)
+uniform float uSize;       // how big it looks (it grows a little as it comes toward you)
+uniform float uFilm;       // how far the liquid has run off it (0 = covered, 1 = gone)
+uniform float uSpill;      // how much liquid is pouring over the edges right now (0-1)
 uniform float uT;          // time (ms)
-uniform float uBroken;     // 1 once it has broken the surface
 uniform vec3 uBurg, uCream;
 varying vec2 vUv;
 
@@ -59,68 +58,83 @@ float noise(vec2 p) {
 vec2 toLogo(vec2 uv) { return (uv - uC) / uSize + uC; }
 vec3 field(vec2 luv) { return texture2D(uField, luv).rgb; }
 
-// The film of water left on top: clears from the middle of each letter (where
-// it's highest) out to its edges, with a ragged, flowing edge
-float filmAt(vec2 luv, vec3 f) {
-  if (uBroken < 0.5) return 0.0;
-  float n = noise(luv * uRes / 34.0 + vec2(0.0, uT * 0.0009)) + 0.5 * noise(luv * uRes / 14.0 - uT * 0.0013);
-  float clear = uFilm * 1.9 - (1.0 - f.g) * 1.2 - 0.25 + (n - 0.75) * 0.45;
-  return f.r * clamp(1.0 - clear * 2.6, 0.0, 1.0);
+// Which way the liquid runs here: off the letter, toward its nearest edge
+vec2 runDir(vec2 luv) {
+  vec2 e = 3.0 / uRes;
+  vec2 g = vec2(field(luv + vec2(e.x, 0.0)).g - field(luv - vec2(e.x, 0.0)).g,
+                field(luv + vec2(0.0, e.y)).g - field(luv - vec2(0.0, e.y)).g);
+  return length(g) > 1e-4 ? -normalize(g) : vec2(0.0, 1.0);
 }
-// The water pouring over the edges: a band just outside the letters, flowing outward
+
+// How much burgundy liquid is on the logo here (0 = dry, 1 = covered). It
+// runs off toward the edges: the middle of each letter clears first, the
+// edges last, in streaks that move outward, leaving a few beads behind.
+float liquidOn(vec2 luv, vec3 f) {
+  if (f.r < 0.01) return 0.0;
+  vec2 d = runDir(luv);
+  vec2 p = luv * uRes;
+  // (smooth, large shapes: liquid holds together with rounded edges)
+  float flow = noise((p - d * uT * 0.03) * 0.012) * 0.65 + noise((p - d * uT * 0.02) * 0.026) * 0.35;
+  float stay = (1.0 - f.g) * 0.5 + flow * 1.1;                              // where it hangs on longest
+  float q = uFilm * uFilm * (3.0 - 2.0 * uFilm);                            // (clears slowly, then faster, then the last bits)
+  float sheet = smoothstep(q * 1.05 - 0.05, q * 1.05, stay) * (1.0 - smoothstep(0.82, 1.0, uFilm));  // (the last of it slides off at the end)
+  // a few beads left behind, sliding out toward the edge as they go
+  vec2 bp = (p - d * uT * 0.025) * 0.03;
+  float bead = smoothstep(0.83, 0.86, noise(bp)) * (1.0 - smoothstep(0.6, 0.97, uFilm));
+  return f.r * clamp(max(sheet, bead), 0.0, 1.0);
+}
+// Liquid pouring off the edges into the water: a band just outside the
+// letters, flowing outward, that comes and goes
 float spillAt(vec2 luv, vec3 f) {
-  float band = smoothstep(0.02, 0.35, f.g) * (1.0 - f.r);
-  vec2 dir = luv - uC;
-  float n = noise(luv * uRes / 22.0 - dir * uT * 0.012) * 0.7 + noise(luv * uRes / 60.0 + uT * 0.0007) * 0.6;
-  return band * uSpill * smoothstep(0.25, 0.9, n);
+  float band = smoothstep(0.03, 0.4, f.g) * (1.0 - f.r);
+  vec2 d = luv - uC;
+  vec2 p = luv * uRes;
+  float flow = noise(p * 0.05 - normalize(d + 1e-5) * uT * 0.06) * 0.7 + noise(p * 0.018 + uT * 0.0005) * 0.5;
+  return band * uSpill * smoothstep(0.35, 0.85, flow);
 }
-// The water's surface height
-float surface(vec2 uv) {
+// The liquid's surface (for the light catching it)
+float wetHeight(vec2 uv) {
   vec2 luv = toLogo(uv); vec3 f = field(luv);
-  float bulge = f.b * smoothstep(0.3, 0.85, uR) * (1.0 - uBroken * 0.75);   // the water humps up over it
-  float top = f.g * uBroken * 0.35;                                         // its rounded top above the water
-  float ring = sin(length((uv - uC) * uRes) * 0.09 - uT * 0.006) * 0.025 * smoothstep(0.5, 0.9, uR) * (1.0 - uFilm);
-  return bulge * 0.9 + top + filmAt(luv, f) * 0.45 + spillAt(luv, f) * 0.55 + ring * f.b;
+  float under = f.b * (1.0 - uR) * 0.0 + f.g * smoothstep(0.35, 0.95, uR) * (1.0 - step(0.001, uFilm)) * 0.5;  // the shape pushing up under the sheet
+  return liquidOn(luv, f) * 0.6 * step(0.001, uFilm) + under + spillAt(luv, f) * 0.5;  // (the edges catch the light)
 }
 
 void main() {
   vec2 uv = vUv;
-  vec2 e = 1.2 / uRes;
-  float h0 = surface(uv);
-  vec3 nrm = normalize(vec3((h0 - surface(uv + vec2(e.x, 0.0))) * 9.0, (h0 - surface(uv + vec2(0.0, e.y))) * 9.0, 1.0));
-
   vec2 luv = toLogo(uv); vec3 f = field(luv);
-  float depth = 1.0 - uR;                                   // how far under the surface the logo still is
-  float film = filmAt(luv, f);
-  // The logo, bent by the surface and seen through the burgundy water above it
-  vec2 bent = luv + nrm.xy * (0.006 + depth * 0.03 + film * 0.01);
-  vec4 logo = texture2D(uLogo, bent);
-  float through = exp(-(depth * 2.6 + film * 0.08) * 1.6);  // how much cream gets through the water (the film on top is thin)
-  vec3 liquid = mix(uBurg, vec3(0.42, 0.08, 0.11), 0.55);   // burgundy water, lit a little
-  vec3 logoCol = mix(uBurg, uCream, through);
-  logoCol = mix(logoCol, liquid, film * 0.12);
+  vec4 logo = texture2D(uLogo, luv);                       // the logo itself: never bent
+  float depth = 1.0 - uR;
+  // Before it breaks the surface it's under the water (fading up through
+  // it); after, the liquid left on it runs off
+  float covered = uFilm > 0.0 ? liquidOn(luv, f) : 1.0;
+  float through = uFilm > 0.0 ? 1.0 : exp(-depth * 3.2) * 0.55;            // how much of it shows through the water above it
+  vec3 col = mix(uBurg, uCream, through);
+  col = mix(col, mix(uBurg, vec3(0.3, 0.02, 0.05), 0.25), covered * (uFilm > 0.0 ? 1.0 : 0.0));  // the burgundy liquid on it
 
-  // Its shadow on the floor below: close and sharp while it's deep, further
-  // away and softer as it lifts toward you
-  float lift = uR;
-  vec2 off = vec2(0.004, 0.09 * uLogoH) * mix(0.12, 1.0, lift);
+  // Its shadow on the floor below: close and sharp while it's deep,
+  // further away and softer as it lifts toward you
+  vec2 off = vec2(0.004, 0.09 * uLogoH) * mix(0.15, 1.0, uR);
   vec3 sf = field(toLogo(uv - off));
-  float shadow = mix(sf.r, sf.g, lift) * mix(0.35, 0.6, lift);
+  float shadow = mix(sf.r, sf.g, uR) * mix(0.3, 0.6, uR) * smoothstep(0.0, 0.5, uR);
+
+  // Light catching the liquid
+  vec2 e = 1.0 / uRes;
+  float h0 = wetHeight(uv);
+  vec2 e2 = e * 2.5;  // (a little wider: a rounded edge to the liquid)
+  vec3 n = normalize(vec3((wetHeight(uv - vec2(e2.x, 0.0)) - wetHeight(uv + vec2(e2.x, 0.0))) * 2.2, (wetHeight(uv - vec2(0.0, e2.y)) - wetHeight(uv + vec2(0.0, e2.y))) * 2.2, 1.0));
+  vec3 L = normalize(vec3(-0.4, -0.55, 0.73));
+  float facing = clamp(dot(n, L), 0.0, 1.0);
+  float wetHere = clamp(h0 * 4.0, 0.0, 1.0);
+  float sheen = (pow(facing, 90.0) * 0.9 + pow(facing, 10.0) * 0.08) * wetHere;
 
   float spill = spillAt(luv, f);
-  // Light catching the water: the bulge, the film and the spill
-  vec3 L = normalize(vec3(-0.35, -0.5, 0.79));
-  float spec = pow(clamp(dot(nrm, L), 0.0, 1.0), 70.0);
-  float wet = clamp((f.b * smoothstep(0.3, 0.85, uR) * (1.0 - uBroken)) * 2.0 + film * 2.5 + spill * 2.0, 0.0, 1.0);
-  float sheen = spec * wet;
-
-  // Put it together, see-through where there's only water (premultiplied)
   vec3 c = vec3(0.078, 0.0, 0.012) * shadow; float a = shadow;
   float la = logo.a;
-  c = logoCol * la + c * (1.0 - la); a = la + a * (1.0 - la);
-  float sa = clamp(spill * 0.85, 0.0, 0.85);
-  c = liquid * sa + c * (1.0 - sa); a = sa + a * (1.0 - sa);
-  c += vec3(1.0, 0.93, 0.86) * sheen * 0.85; a = max(a, sheen * 0.85);
+  c = col * la + c * (1.0 - la); a = la + a * (1.0 - la);
+  float sa = clamp(spill, 0.0, 1.0) * 0.9;                                 // the liquid pouring off (burgundy, a little lighter where it's moving)
+  vec3 spillCol = mix(uBurg, vec3(0.33, 0.04, 0.07), 0.5);
+  c = spillCol * sa + c * (1.0 - sa); a = sa + a * (1.0 - sa);
+  c += vec3(1.0, 0.92, 0.86) * sheen; a = max(a, sheen);
   gl_FragColor = vec4(min(c, vec3(1.0)), clamp(a, 0.0, 1.0));
 }`;
 
@@ -244,7 +258,7 @@ function waterIntro(heroLogo, { addDrop, done }) {
     gl.uniform3fv(U('uBurg'), rgb(css.getPropertyValue('--burgundy').trim() || '#3B0008'));
     gl.uniform3fv(U('uCream'), rgb(cream));
     gl.viewport(0, 0, W, H);
-    const u = { r: U('uR'), size: U('uSize'), film: U('uFilm'), spill: U('uSpill'), t: U('uT'), broken: U('uBroken') };
+    const u = { r: U('uR'), size: U('uSize'), film: U('uFilm'), spill: U('uSpill'), t: U('uT') };
 
     // The timeline
     const start = performance.now() + WATER.delay;
@@ -256,15 +270,13 @@ function waterIntro(heroLogo, { addDrop, done }) {
       const t = now - start;
       const p = Math.min(1, Math.max(0, t / WATER.rise));
       const rise = 1 - (1 - p) ** 3;
-      const broken = t >= tBreak ? 1 : 0;
-      const film = Math.min(1, Math.max(0, (t - tBreak) / WATER.run));
+      const film = t < tBreak ? 0 : Math.max(0.001, Math.min(1, (t - tBreak) / WATER.run));
       const s = Math.min(1, Math.max(0, (t - tBreak - 150) / WATER.spill));
       gl.uniform1f(u.r, rise);
       gl.uniform1f(u.size, WATER.from + (1 - WATER.from) * rise);
       gl.uniform1f(u.film, film);
       gl.uniform1f(u.spill, Math.sin(Math.PI * Math.min(1, s * 1.15)) ** 0.8 * (s > 0 ? 1 : 0));
       gl.uniform1f(u.t, Math.max(0, t));
-      gl.uniform1f(u.broken, broken);
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       // As the water pours off: ripples spread out from around the logo
