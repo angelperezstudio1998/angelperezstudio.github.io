@@ -270,21 +270,22 @@ if (smallScreen) {
 }
 
 // ---- The project view: clicking a card opens its project page ----
-// Almost like a page of its own: the project slides in from the right with a
-// water ripple coming from the right (style.css, "The project view"), and the
-// other projects of its category fade in on the left, so you can go from one
-// to the next. Filled in from the cards: their row, name and quick line, and
+// Almost like a page of its own: it fades in over the whole screen with the
+// project centered (style.css, "The project view"). The arrows (or the ← →
+// keys) step to the previous / next project of its category and the strip
+// along the bottom jumps to any of them, so you never have to go back first. Filled in from the cards: their row, name and quick line, and
 // their page (a <template class="work-card__page"> after the card's button;
 // without one, a placeholder).
 // Each project has its own address (?p=poster-01: the name in lowercase with
 // dashes, or the card's data-id), so it can be shared and the browser's back
-// button closes it. The ×, Esc and the back button all close it: the ripple
-// draws back to the right, then it's gone.
+// button closes it. The ×, Esc and the back button all close it (it fades out).
 const projectPopup = document.querySelector('.project');
 const popupList = projectPopup.querySelector('.project__list');
+const popupPrev = projectPopup.querySelector('.project__step--prev');
+const popupNext = projectPopup.querySelector('.project__step--next');
 const popupInner = projectPopup.querySelector('.project__inner');
 const popupBody = projectPopup.querySelector('.project__body');
-const POPUP_CLOSE_MS = 900;  // = --close in style.css (the ripple drawing back)
+const POPUP_CLOSE_MS = 450;  // = --fade-time in style.css
 const POPUP_SWITCH_MS = 250; // = .project__inner's fade in style.css
 let popupCard = null;        // the card whose project is showing
 let popupButton = null, popupByPointer = false;  // the card's button that opened it, and whether by mouse/touch
@@ -310,6 +311,9 @@ function fillProject(card) {
   const name = card.querySelector('.work-card__name').textContent;
   const page = card.querySelector('.work-card__page');
   const list = card.parentElement;
+  const k = [...list.children].indexOf(card);
+  popupPrev.hidden = k === 0;                          // (no previous for the first,
+  popupNext.hidden = k === list.children.length - 1;   //  no next for the last)
   projectPopup.querySelector('.project__kind').textContent = list.getAttribute('aria-label').replace(/ projects$/, '');  // its row ("Posters projects" → Posters)
   projectPopup.querySelector('.project__title').textContent = name;
   projectPopup.querySelector('.project__lead').textContent = card.querySelector('.work-card__desc').textContent.replace(name, '').trim();
@@ -323,7 +327,6 @@ function fillProject(card) {
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'project__item';
-      item.style.setProperty('--k', k);
       item.card = other;
       const thumb = document.createElement('span');
       thumb.className = 'project__thumb';
@@ -338,7 +341,10 @@ function fillProject(card) {
       return item;
     }));
   }
-  popupList.querySelectorAll('.project__item').forEach((item) => item.setAttribute('aria-current', String(item.card === card)));
+  popupList.querySelectorAll('.project__item').forEach((item) => {
+    item.setAttribute('aria-current', String(item.card === card));
+    if (item.card === card) item.scrollIntoView({ block: 'nearest', inline: 'nearest' });  // (keep it in view in the strip)
+  });
   // Its color (data-color on the card, e.g. data-color="#1d3557"; burgundy without one)
   if (card.dataset.color) root.style.setProperty('--project-color', card.dataset.color);
   else root.style.removeProperty('--project-color');
@@ -357,20 +363,10 @@ function openProject(card, { byPointer = false, push = true } = {}) {
   window.addEventListener('wheel', keepScrollInPopup, { passive: false });
   window.addEventListener('touchmove', keepScrollInPopup, { passive: false });
   if (!projectPopup.open) {
-    if (!projectPopup.style.getPropertyValue('--pattern')) {  // (the drop pattern for the ripple's crests, made once)
-      projectPopup.style.setProperty('--pattern', `url("${background.patternTile(COLOR.cream, 0.75)}")`);
-      projectPopup.style.setProperty('--pattern-size', `${TILE_W}px ${TILE_H}px`);
-    }
     projectPopup.classList.remove('is-shown');
-    // The rings start just off the right edge (style.css: at 115% across,
-    // half way down) and go just far enough for the last one to cross the
-    // screen, so the whole opening is spent on screen
-    const css = getComputedStyle(projectPopup);
-    const w = window.innerWidth, h = window.innerHeight;
-    projectPopup.style.setProperty('--reveal-to', `${Math.round(Math.hypot(w * 1.15, h / 2) + parseFloat(css.getPropertyValue('--wavelength')) * 3.4)}px`);
     projectPopup.showModal();
     popupInner.focus({ preventScroll: true });  // (so the arrow keys scroll the project)
-    getComputedStyle(projectPopup).getPropertyValue('--reveal');  // (start from nothing, so it spreads)
+    getComputedStyle(projectPopup).opacity;     // (start from invisible, so it fades in)
   }
   projectPopup.classList.add('is-shown');
 }
@@ -388,7 +384,7 @@ function switchProject(card) {
   }, POPUP_SWITCH_MS);
 }
 
-// Draw it back to the right, then close
+// Fade it out, then close
 function hideProject() {
   if (!projectPopup.open || !projectPopup.classList.contains('is-shown')) return;
   projectPopup.classList.remove('is-shown');
@@ -411,6 +407,18 @@ window.addEventListener('popstate', () => {
 allCards.forEach((card) => card.querySelector('.work-card__open').addEventListener('click', (e) =>
   openProject(card, { byPointer: e.detail > 0 })));  // (detail 0: Enter or Space)
 projectPopup.querySelector('.project__close').addEventListener('click', closeProject);
+// Previous / next in the category (the arrows, or ← → when not typing)
+const stepProject = (by) => {
+  const list = popupCard && popupCard.parentElement;
+  const next = list && list.children[[...list.children].indexOf(popupCard) + by];
+  if (next) switchProject(next);
+};
+popupPrev.addEventListener('click', () => stepProject(-1));
+popupNext.addEventListener('click', () => stepProject(1));
+projectPopup.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') stepProject(-1);
+  else if (e.key === 'ArrowRight') stepProject(1);
+});
 projectPopup.addEventListener('cancel', (e) => { e.preventDefault(); closeProject(); });  // Esc
 projectPopup.addEventListener('close', () => {
   projectPopup.classList.remove('is-shown');

@@ -55,9 +55,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 
   <!-- ?v=… makes browsers fetch fresh files after each update (change it every time you publish) -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261025b">
-  <script src="assets/js/core.js?v=20261025b" defer></script>
-  <script src="assets/js/home.js?v=20261025b" defer></script>
+  <link rel="stylesheet" href="assets/css/style.css?v=20261025c">
+  <script src="assets/js/core.js?v=20261025c" defer></script>
+  <script src="assets/js/home.js?v=20261025c" defer></script>
 </head>
 <body>
 
@@ -161,7 +161,7 @@
           </a>
           <!-- One card per project: they rise next to the title when you hover the
                row (phones: tap the row to open them as a strip); clicking one opens
-               its project page (sliding in from the right). Placeholders for now: put the project's
+               its project page (it fades in over the screen). Placeholders for now: put the project's
                image inside its button (<img src="…" alt="">) and write its name and
                quick line. The project view's content goes in a
                <template class="work-card__page"> right after the button (see the
@@ -198,7 +198,7 @@
           </a>
           <!-- One card per project: they rise next to the title when you hover the
                row (phones: tap the row to open them as a strip); clicking one opens
-               its project page (sliding in from the right). Placeholders for now: put the project's
+               its project page (it fades in over the screen). Placeholders for now: put the project's
                image inside its button (<img src="…" alt="">) and write its name and
                quick line. The popup's page content goes in a
                <template class="work-card__page"> right after the button (see the
@@ -220,7 +220,7 @@
           </a>
           <!-- One card per project: they rise next to the title when you hover the
                row (phones: tap the row to open them as a strip); clicking one opens
-               its project page (sliding in from the right). Placeholders for now: put the project's
+               its project page (it fades in over the screen). Placeholders for now: put the project's
                image inside its button (<img src="…" alt="">) and write its name and
                quick line. The popup's page content goes in a
                <template class="work-card__page"> right after the button (see the
@@ -254,11 +254,14 @@
   </main>
 
   <!-- The project view: a card's project page, almost like a page of its own
-       (it slides in from the right and fills the screen; its address is
-       ?p=the-project-name). On the left: the other projects of the same
-       category. Filled in by home.js from the cards: their row, name, quick
-       line and page template. -->
+       (it fades in over the whole screen, the project centered; its address
+       is ?p=the-project-name). Arrows step to the previous / next project of
+       the same category and the strip along the bottom shows them all.
+       Filled in by home.js from the cards: their row, name, quick line and
+       page template. -->
   <dialog class="project" aria-labelledby="project-title">
+    <button class="project__step project__step--prev" type="button" aria-label="Previous project">←</button>
+    <button class="project__step project__step--next" type="button" aria-label="Next project">→</button>
     <nav class="project__list" aria-label="More projects"></nav>
     <div class="project__view">
       <div class="project__inner">

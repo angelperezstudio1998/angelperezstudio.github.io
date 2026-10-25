@@ -647,16 +647,13 @@ ul { padding: 0; list-style: none; }
 }
 
 /* The project view (a card's project page, almost like a page of its own).
-   It fills the screen in the project's color (--project-color: burgundy for
-   now; a card can set its own with data-color) and opens like the water
-   ripple you get when clicking the page: rings spread slowly from the right
-   (--reveal: how far the front has got), the project shows through the rings,
-   and the logo's drop pattern lights up on their crests as they pass. It
-   slides in a little from the right with them, and fades to transparent
-   toward the left. There, the other projects of the same category fade in as a column
-   you scroll up and down (phones: a strip along the bottom). home.js fills it
-   in and opens it; the ×, Esc or the browser's back button close it. */
-@property --reveal { syntax: "<length>"; inherits: true; initial-value: 0px; }
+   It fades in over the whole screen in the project's color (--project-color:
+   burgundy for now; a card can set its own with data-color), with the
+   project centered. To see the category's other projects without going
+   back: arrows either side (or the ← → keys) step to the previous / next,
+   and a strip along the bottom jumps to any of them. home.js fills it in
+   and opens it; the ×, Esc or the browser's back button close it (it fades
+   out). */
 :root { --project-color: #3B0008; }  /* burgundy, until a project sets its own (home.js) */
 .project {
   position: fixed;
@@ -668,142 +665,118 @@ ul { padding: 0; list-style: none; }
   margin: 0;
   padding: 0;
   border: 0;
-  background: transparent;
-  color: var(--burgundy);
+  background: color-mix(in srgb, var(--project-color) 94%, transparent);
+  color: var(--cream);
   overflow: hidden;
-  --list: clamp(180px, 17vw, 260px);  /* the column of other projects */
-  --fade: 22vw;                        /* how far the project fades out toward the left */
-  --open: 2.4s;                        /* how long the ripple takes to cover the screen */
-  --close: 0.9s;                       /* and to draw back */
-  --wavelength: 90px;                  /* distance between the ripple's rings */
-  --reveal: 0px;
-  transition: --reveal var(--close) cubic-bezier(.5, 0, .75, 0);  /* closing: drawn back to the right */
-}
-.project.is-shown {
-  --reveal: var(--reveal-to, 200vmax);  /* (home.js: just far enough for the last ring to cross the screen) */
-  transition: --reveal var(--open) cubic-bezier(.3, .2, .45, 1);  /* opening: spreads from the right, slowing down a little like a ripple */
-}
-.project::backdrop {           /* the whole page strongly blurred behind it under a burgundy tint, so the left side is calm */
-  background-color: color-mix(in srgb, var(--project-color) 55%, transparent);
-  -webkit-backdrop-filter: blur(40px);
-  backdrop-filter: blur(40px);
+  --strip: 128px;              /* the strip of projects along the bottom */
+  --fade-time: 0.45s;          /* how long it takes to fade in and out (= POPUP_FADE_MS in home.js) */
   opacity: 0;
-  transition: opacity 0.5s ease;
+  transition: opacity var(--fade-time) ease;
+}
+.project.is-shown { opacity: 1; }
+.project::backdrop {           /* the page blurred behind it */
+  background-color: transparent;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  opacity: 0;
+  transition: opacity var(--fade-time) ease;
 }
 .project.is-shown::backdrop { opacity: 1; }
 /* While it's open the page behind can't scroll (home.js adds .is-locked).
    The page always keeps its scrollbar's space, so locking it doesn't make
-   everything shift sideways. That space can't be covered by the view, so
-   while it's locked it takes the color of the view's right edge. (The only
-   time <html> gets a background: normally it would hide the pattern
-   canvases, but then the page is covered anyway.) */
+   everything shift sideways; that space takes the project's color then.
+   (The only time <html> gets a background: normally it would hide the
+   pattern canvases, but then the page is covered anyway.) */
 html { scrollbar-gutter: stable; }
-html.is-locked { overflow: hidden; background: var(--project-color, #3B0008); }  /* (home.js sets --project-color on <html>) */
+html.is-locked { overflow: hidden; background: var(--project-color); }
 
-/* The project: its color over the whole screen, fading to transparent
-   toward the left (over the blurred page). The ripple reveals it: solid
-   behind the rings, then rings that come and go (--rings) up to the front. */
-.project__view {
-  position: absolute;
-  inset: 0;
-  color: var(--cream);
-  background: linear-gradient(to right, transparent var(--list), color-mix(in srgb, var(--project-color) 85%, transparent) calc(var(--list) + var(--fade)), var(--project-color));
-  --w: var(--wavelength);
-  --rings: radial-gradient(circle at 115% 50%,
-    #000 calc(var(--reveal) - var(--w) * 3.2),
-    rgba(0, 0, 0, 0.35) calc(var(--reveal) - var(--w) * 2.7),
-    #000 calc(var(--reveal) - var(--w) * 2.2),
-    rgba(0, 0, 0, 0.2) calc(var(--reveal) - var(--w) * 1.6),
-    rgba(0, 0, 0, 0.85) calc(var(--reveal) - var(--w) * 1.1),
-    rgba(0, 0, 0, 0.1) calc(var(--reveal) - var(--w) * 0.5),
-    transparent var(--reveal));
-  -webkit-mask-image: var(--rings);
-          mask-image: var(--rings);
-  transform: translateX(6%);
-  transition: transform var(--close) cubic-bezier(.5, 0, .75, 0);
-}
-.project.is-shown .project__view { transform: none; transition: transform var(--open) cubic-bezier(.2, .6, .25, 1); }
-/* The logo's drop pattern lighting up on the rings' crests as they pass
-   (like the page's click ripple; home.js gives it the pattern picture) */
-.project__view::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: var(--pattern, none);
-  background-size: var(--pattern-size, auto);
-  --w: var(--wavelength);
-  --crests: radial-gradient(circle at 115% 50%,
-    transparent calc(var(--reveal) - var(--w) * 3.4),
-    #000 calc(var(--reveal) - var(--w) * 2.9),
-    transparent calc(var(--reveal) - var(--w) * 2.45),
-    #000 calc(var(--reveal) - var(--w) * 1.9),
-    transparent calc(var(--reveal) - var(--w) * 1.4),
-    #000 calc(var(--reveal) - var(--w) * 0.8),
-    transparent calc(var(--reveal) - var(--w) * 0.2));
-  -webkit-mask-image: var(--crests);
-          mask-image: var(--crests);
-}
-/* What scrolls: the project's content, kept clear of the faded part; it
-   fades out softly at the top and bottom as it scrolls */
+/* The project, centered; what scrolls is its content (fading out softly at
+   the top and bottom as it scrolls) */
+.project__view { position: absolute; inset: 0 0 var(--strip); }
 .project__inner {
-  position: relative;
   height: 100%;
-  padding: clamp(72px, 10vh, 120px) clamp(32px, 6vw, 96px) 96px calc(var(--list) + var(--fade) * 0.8);
+  --side: max(clamp(72px, 9vw, 140px), (100% - 920px) / 2);  /* (a centered column, at most 920px wide, clear of the arrows) */
+  padding: clamp(64px, 10vh, 110px) var(--side) 56px;
   overflow-y: auto;
   overscroll-behavior: contain;  /* scrolling it never scrolls the page behind */
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 56px, #000 calc(100% - 56px), transparent);
-          mask-image: linear-gradient(to bottom, transparent, #000 56px, #000 calc(100% - 56px), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+          mask-image: linear-gradient(to bottom, transparent, #000 48px, #000 calc(100% - 48px), transparent);
   transition: opacity 0.25s ease;
 }
-.project__inner.is-switching { opacity: 0; }  /* (changing to another project from the column) */
-.project__inner:focus { outline: none; }  /* (it can get the focus so the arrow keys scroll it; no box drawn around it) */
-/* Scrollbars here: a thin rounded burgundy bar on a see-through track, no
-   arrow buttons. Chrome, Edge and Safari use the ::-webkit-scrollbar parts;
+.project__inner.is-switching { opacity: 0; }  /* (changing to another project) */
+.project__inner:focus { outline: none; }  /* (it gets the focus so the arrow keys scroll it; no box drawn around it) */
+/* Scrollbars here: a thin rounded cream bar on a see-through track, no arrow
+   buttons. Chrome, Edge and Safari use the ::-webkit-scrollbar parts;
    Firefox the two standard properties. */
 .project__inner::-webkit-scrollbar,
 .project__list::-webkit-scrollbar { width: 14px; height: 14px; }
 .project__inner::-webkit-scrollbar-track,
-.project__list::-webkit-scrollbar-track { background: transparent; margin: 56px; }
+.project__list::-webkit-scrollbar-track { background: transparent; margin: 48px; }
 .project__inner::-webkit-scrollbar-thumb,
 .project__list::-webkit-scrollbar-thumb {
   border: 4px solid transparent;  /* (space around the bar inside its 14px) */
   border-radius: 7px;
-  background: rgba(59, 0, 8, 0.3) padding-box;
+  background: rgba(214, 199, 174, 0.3) padding-box;
 }
 .project__inner::-webkit-scrollbar-thumb:hover,
-.project__list::-webkit-scrollbar-thumb:hover { background-color: rgba(59, 0, 8, 0.5); }
+.project__list::-webkit-scrollbar-thumb:hover { background-color: rgba(214, 199, 174, 0.5); }
 .project__inner::-webkit-scrollbar-button,
 .project__list::-webkit-scrollbar-button { display: none; }
 @supports not selector(::-webkit-scrollbar) {
   .project__inner,
-  .project__list { scrollbar-width: thin; scrollbar-color: rgba(59, 0, 8, 0.3) transparent; }
+  .project__list { scrollbar-width: thin; scrollbar-color: rgba(214, 199, 174, 0.3) transparent; }
 }
 
-/* The other projects of the category: a column on the left that scrolls up
-   and down; they fade in one after another once the project is in. The one
-   you're looking at is marked. */
+/* Previous / next: arrows either side of the project */
+.project__step {
+  position: absolute;
+  top: calc(50% - var(--strip) / 2);
+  z-index: 2;
+  width: 48px;
+  height: 48px;
+  margin-top: -24px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(214, 199, 174, 0.1);
+  color: var(--cream);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.project__step--prev { left: var(--gutter); }
+.project__step--next { right: var(--gutter); }
+.project__step:hover,
+.project__step:focus-visible { background: rgba(214, 199, 174, 0.22); }
+.project__step:focus { outline: none; }
+.project__step[hidden] { display: none; }
+
+/* The category's projects: a strip along the bottom you scroll sideways;
+   the one you're looking at is marked */
 .project__list {
   position: absolute;
-  top: 0;
-  bottom: 0;
   left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 1;
-  width: var(--list);
+  height: var(--strip);
   display: flex;
-  flex-direction: column;
-  gap: 22px;
-  padding: clamp(72px, 10vh, 120px) 24px 96px var(--gutter);
-  overflow-y: auto;
+  justify-content: safe center;
+  gap: 18px;
+  padding: 12px var(--gutter) 18px;
+  overflow-x: auto;
+  overflow-y: hidden;
   overscroll-behavior: contain;
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 56px, #000 calc(100% - 56px), transparent);
-          mask-image: linear-gradient(to bottom, transparent, #000 56px, #000 calc(100% - 56px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--gutter), #000 calc(100% - var(--gutter)), transparent);
+          mask-image: linear-gradient(to right, transparent, #000 var(--gutter), #000 calc(100% - var(--gutter)), transparent);
 }
+.project__list:focus { outline: none; }  /* (it can get the focus because it scrolls; no box drawn around it) */
 .project__item {
   flex: none;
   display: grid;
+  grid-template-rows: 1fr auto;
   gap: 6px;
-  width: 100%;
+  height: 100%;
   padding: 0;
   border: 0;
   background: none;
@@ -811,22 +784,16 @@ html.is-locked { overflow: hidden; background: var(--project-color, #3B0008); } 
   font: inherit;
   text-align: left;
   cursor: pointer;
-  opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
 }
-.project.is-shown .project__item {
-  opacity: 0.55;
-  transform: none;
-  transition: opacity 0.6s ease calc(1.1s + var(--k) * 90ms), transform 0.7s cubic-bezier(.2, .7, .2, 1) calc(1.1s + var(--k) * 90ms);
-}
-.project.is-shown .project__item:hover,
-.project.is-shown .project__item:focus-visible,
-.project.is-shown .project__item[aria-current="true"] { opacity: 1; transition-delay: 0s; }
+.project__item:hover,
+.project__item:focus-visible,
+.project__item[aria-current="true"] { opacity: 1; }
 .project__item:focus { outline: none; }
 .project__thumb {              /* soft-edged like the cards: fades to transparent all around */
   display: block;
-  width: 100%;
+  height: 100%;
   aspect-ratio: var(--ratio, 0.8);
   background: rgba(214, 199, 174, 0.14);  /* (placeholder) */
   --soft: 18%;
@@ -841,7 +808,7 @@ html.is-locked { overflow: hidden; background: var(--project-color, #3B0008); } 
 }
 .project__thumb:has(img) { background: none; }
 .project__thumb img { width: 100%; height: 100%; object-fit: cover; }
-.project__item-name { font-size: 13px; font-weight: 500; }
+.project__item-name { font-size: 12px; font-weight: 500; }
 
 .project__close {
   position: absolute;
@@ -857,19 +824,15 @@ html.is-locked { overflow: hidden; background: var(--project-color, #3B0008); } 
   font-size: 22px;
   line-height: 1;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.3s ease;
 }
-.project.is-shown .project__close { opacity: 1; transition: opacity 0.5s ease 1s; }
 .project__close:focus { outline: none; }
-.project__close:focus-visible { background: rgba(214, 199, 174, 0.35); }
+.project__close:hover,
+.project__close:focus-visible { background: rgba(214, 199, 174, 0.3); }
 
-/* On the project's color: cream text, cream placeholders and scrollbar */
+/* The project's content: cream text, cream placeholders */
 .project__kind { color: rgba(214, 199, 174, 0.65); }
 .project__inner .ph { border-color: rgba(214, 199, 174, 0.35); background: rgba(214, 199, 174, 0.06); }
 .project__inner .ph .label { color: rgba(214, 199, 174, 0.6); }
-.project__inner::-webkit-scrollbar-thumb { background-color: rgba(214, 199, 174, 0.3); }
-.project__inner::-webkit-scrollbar-thumb:hover { background-color: rgba(214, 199, 174, 0.5); }
 .project__title {
   margin: 10px 0 12px;
   font-size: clamp(36px, 5.5vw, 80px);
@@ -1122,29 +1085,13 @@ html.is-locked { overflow: hidden; background: var(--project-color, #3B0008); } 
   }
   .work-card__desc { opacity: 1; font-size: 12px; }  /* (no hover: always shown) */
   .project__pair { grid-template-columns: 1fr; }
-  /* Phones, the project view: the project on top, fading out toward the
-     bottom, and the other projects in a strip along the bottom you swipe
-     sideways */
-  .project { --list: 0px; --strip: 150px; }
-  .project__view { background: linear-gradient(to bottom, var(--project-color), color-mix(in srgb, var(--project-color) 85%, transparent) calc(100% - var(--strip) - 90px), transparent calc(100% - var(--strip) + 10px)); }
-  .project__inner { padding: 76px 20px calc(var(--strip) + 48px); }
-  .project__list {
-    top: auto;
-    right: 0;
-    width: auto;
-    height: var(--strip);
-    flex-direction: row;
-    gap: 14px;
-    padding: 10px 20px 18px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 20px, #000 calc(100% - 20px), transparent);
-            mask-image: linear-gradient(to right, transparent, #000 20px, #000 calc(100% - 20px), transparent);
-  }
+  /* Phones, the project view: no side arrows (swipe the strip instead),
+     less padding */
+  .project { --strip: 120px; }
+  .project__inner { --side: 20px; padding-top: 72px; padding-bottom: 40px; }
+  .project__step { display: none; }
+  .project__list { justify-content: flex-start; padding-inline: 20px; scrollbar-width: none; }
   .project__list::-webkit-scrollbar { display: none; }
-  .project__item { width: auto; height: 100%; grid-template-rows: 1fr auto; }
-  .project__thumb { width: auto; height: 100%; }
   .project__close { top: 14px; right: 14px; }
   .work-cards--branding,
   .work-cards--web { --h: 150px; }
@@ -1193,18 +1140,9 @@ html.is-locked { overflow: hidden; background: var(--project-color, #3B0008); } 
   .work-card:has(:focus-visible) .work-card__desc { transition-delay: 0.15s !important; }
   .work-item__info { transition: color 0.3s ease !important; }
   .line.has-cut { transition: --hole 0.35s ease !important; }
-  .project { transition: --reveal var(--close) cubic-bezier(.5, 0, .75, 0) !important; }
-  .project.is-shown { transition: --reveal var(--open) cubic-bezier(.25, .5, .35, 1) !important; }
-  .project::backdrop { transition: opacity 0.5s ease !important; }
-  .project__view { transition: transform var(--close) cubic-bezier(.5, 0, .75, 0) !important; }
-  .project.is-shown .project__view { transition: transform var(--open) cubic-bezier(.2, .6, .25, 1) !important; }
+  .project,
+  .project::backdrop { transition: opacity var(--fade-time) ease !important; }
   .project__inner { transition: opacity 0.25s ease !important; }
-  .project__item { transition: opacity 0.3s ease, transform 0.3s ease !important; }
-  .project.is-shown .project__item { transition: opacity 0.6s ease calc(1.1s + var(--k) * 90ms), transform 0.7s cubic-bezier(.2, .7, .2, 1) calc(1.1s + var(--k) * 90ms) !important; }
-  .project.is-shown .project__item:hover,
-  .project.is-shown .project__item:focus-visible,
-  .project.is-shown .project__item[aria-current="true"] { transition-delay: 0s !important; }
-  .project__close { transition: opacity 0.3s ease !important; }
-  .project.is-shown .project__close { transition: opacity 0.5s ease 1s !important; }
+  .project__item { transition: opacity 0.3s ease !important; }
   .line.has-cut.is-cut { transition: --hole 0.35s ease 0.1s, --cut-l 0.35s cubic-bezier(.2, .7, .2, 1), --cut-r 0.35s cubic-bezier(.2, .7, .2, 1) !important; }
 }
