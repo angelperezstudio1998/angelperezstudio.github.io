@@ -445,17 +445,36 @@ ul { padding: 0; list-style: none; }
 /* Width of the big logo: 78% of the screen, at most 920px, and small enough
    on short, wide screens to fit (the logo is 2.5× as wide as it is tall) */
 .hero__logo .logo { width: min(78vw, 920px, 150vh); height: auto; }
-/* The big logo looks raised from the background, as if lit from the top
-   left: a thin light edge where the light catches it, a tight dark edge on
-   the far side (its thickness), and a soft shadow it casts on the page.
-   Lighter mode leaves it flat (it redraws whenever the pieces move). */
-.hero__logo .logo {
-  filter:
-    drop-shadow(-1px -1px 0 rgba(255, 246, 228, 0.35))
-    drop-shadow(1.5px 2px 0 rgba(20, 0, 3, 0.55))
-    drop-shadow(4px 10px 14px rgba(15, 0, 2, 0.45));
+/* A stage light from the top: a soft cone of warm light falling on the
+   background, and the logo's shadow cast down onto it (.hero__shadow, a live
+   copy of the logo; home.js makes it wobble on the water when a ripple
+   passes). --shadow-drop: how far below the logo it falls. */
+.scene--hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 34% 75% at 50% -12%, rgba(255, 226, 196, 0.16), rgba(255, 226, 196, 0.06) 55%, transparent 100%),
+    radial-gradient(ellipse 22% 40% at 50% -6%, rgba(255, 236, 212, 0.1), transparent 100%);
 }
-.is-lite .hero__logo .logo { filter: none; }
+.hero__logo { position: relative; isolation: isolate; --shadow-drop: 9%; }
+.hero__shadow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  color: #140003;                /* (the copy fills with this color) */
+  opacity: 0.6;
+  transform: translateY(var(--shadow-drop)) scale(1.04);
+  transform-origin: 50% 0;
+  filter: blur(7px);             /* calm: just soft (home.js switches to the water filter while a ripple passes) */
+}
+.hero__shadow.is-wet { filter: url(#shadow-water); }
 
 .hero__corner {
   position: absolute;

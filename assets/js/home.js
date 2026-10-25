@@ -134,6 +134,39 @@ const heroLogo = document.querySelector('.hero__logo');
 const scenePieces = windPieces;  // (core.js)
 
 const heroLogoPieces = logoPieces(heroLogo, { tilt: 60, blur: 8 });
+
+// ---- The logo's shadow on the water ----
+// The stage light casts the logo's shadow on the background (style.css). When
+// a ripple passes under it, the shadow wobbles like a shadow on water: how
+// much follows the waves where the shadow is, swaying back and forth.
+const SHADOW_WATER = {
+  warp: 70,        // how far the shadow bends on the highest waves (logo units)
+  sway: 7,         // how fast it sways back and forth (per second)
+};
+const heroShadow = heroLogo.querySelector('.hero__shadow');
+const shadowWarp = heroShadow.querySelector('feDisplacementMap');
+let shadowLoop = false, shadowLast = 0, shadowScale = '0';
+function shadowFrame(now) {
+  // (the water filter is costly to redraw: at most ~25 times a second, and
+  // only when the bend changes by a visible amount)
+  if (now - shadowLast < 40) { requestAnimationFrame(shadowFrame); return; }
+  shadowLast = now;
+  const r = heroShadow.getBoundingClientRect();
+  let a = 0;
+  if (r.bottom > 0 && r.top < window.innerHeight) {
+    for (let i = 0; i <= 4; i++) for (let j = 0; j <= 2; j++) {   // (waves under a few spots of the shadow)
+      a = Math.max(a, background.waterAt(r.left + (r.width * i) / 4, r.top + (r.height * j) / 2));
+    }
+  }
+  const wet = a > 0.02 && !perf.lite;
+  heroShadow.classList.toggle('is-wet', wet);
+  const scale = wet ? String(Math.round((SHADOW_WATER.warp * a * Math.sin((now / 1000) * SHADOW_WATER.sway)) / 3) * 3) : '0';
+  if (scale !== shadowScale) { shadowWarp.setAttribute('scale', scale); shadowScale = scale; }
+  if (background.rippling()) requestAnimationFrame(shadowFrame);
+  else { shadowLoop = false; heroShadow.classList.remove('is-wet'); }
+}
+const watchShadow = () => { if (!shadowLoop) { shadowLoop = true; requestAnimationFrame(shadowFrame); } };
+['pointerdown', 'pointerup'].forEach((type) => window.addEventListener(type, () => setTimeout(watchShadow, 0), { passive: true }));
 const heroTextPieces = scenePieces(heroScene);
 const workPieces = scenePieces(workScene);
 const contactPieces = scenePieces(contactScene);
@@ -514,6 +547,7 @@ function startDrip(mode, x, y, start = performance.now()) {
   const reach = Math.max(...heroLogoPieces.map((pc) => Math.hypot(pc.cx - x, pc.cy - y - off))) + DRIP.band;
   hero.drip = { mode, x, y: y + off, start, reach, done: false };
   background.addDrop(x, y, start);  // the background ripples from the same spot
+  watchShadow();                     // (its shadow on the water reacts too)
   wakeHero();
 }
 

@@ -1466,6 +1466,22 @@ const background = (() => {
       patternMoved = true;
       wake();
     },
+    // Is any ripple still playing?
+    rippling() { return ripples.length > 0; },
+    // How high the waves are at screen point (x, y) right now: 0 = calm,
+    // up to 1 on a crest (the strongest ripple there wins)
+    waterAt(x, y) {
+      const now = performance.now();
+      let a = 0;
+      ripples.forEach((rp) => {
+        const age = now - rp.start;
+        if (age >= RIPPLE.duration) return;
+        const t = age / 1000;
+        const fade = (1 - t / (RIPPLE.duration / 1000)) ** 1.6 * Math.min(1, t / 0.06);  // (same as the drawing)
+        a = Math.max(a, Math.abs(waterAt(Math.hypot(x - rp.x, y - rp.y), t, fade).crest));
+      });
+      return a;
+    },
     // The circles the ripples currently cover (used to switch on the glass behind text)
     areas() {
       const now = performance.now();
