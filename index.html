@@ -56,10 +56,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 
   <!-- ?v=… makes browsers fetch fresh files after each update (change it every time you publish) -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261025p">
-  <script src="assets/js/core.js?v=20261025p" defer></script>
-  <script src="assets/js/water-intro.js?v=20261025p" defer></script>
-  <script src="assets/js/home.js?v=20261025p" defer></script>
+  <link rel="stylesheet" href="assets/css/style.css?v=20261025q">
+  <script src="assets/js/core.js?v=20261025q" defer></script>
+  <script src="assets/js/home.js?v=20261025q" defer></script>
 </head>
 <body>
 
@@ -145,44 +144,6 @@
           <path class="piece" data-letter="d" d="M739.48 637.8 C735.11 632.823 732.482 626.505 732.04 619.897 C731.384 610.103 734.434 601.827 741.19 595.071 C746.939 589.303 753.798 586.227 761.766 585.844 C762.695 585.799 763.483 586.518 763.483 587.448 L763.483 600.037 C763.483 600.867 762.848 601.559 762.021 601.629 C758.293 601.941 755.065 603.471 752.336 606.218 C748.861 609.693 747.346 613.966 747.794 619.037 C748.061 622.06 749.271 624.957 751.23 627.275 C754.512 631.157 758.596 633.099 763.483 633.099 C767.814 633.099 771.519 631.559 774.598 628.48 C777.698 625.4 779.248 621.686 779.248 617.333 L779.248 568.552 C779.248 560.665 785.64 554.273 793.527 554.273 L793.527 554.273 C794.348 554.273 795.013 554.938 795.013 555.759 L795.013 617.333 C795.013 626.037 791.923 633.468 785.745 639.626 C779.586 645.784 772.165 648.863 763.483 648.863 C753.957 648.863 745.957 645.176 739.48 637.8 Z"/>
           <path class="piece" data-letter="i" d="M819.587 600.098 L819.587 647.383 C819.587 648.201 818.924 648.863 818.107 648.863 L818.107 648.863 C810.215 648.863 803.817 642.465 803.817 634.573 L803.817 587.279 C803.817 586.464 804.477 585.803 805.292 585.803 L805.292 585.803 C813.187 585.803 819.587 592.203 819.587 600.098 Z"/>
           <path class="piece" data-letter="o" d="M835.908 637.789 C831.546 632.818 828.922 626.511 828.478 619.912 C827.818 610.111 830.868 601.831 837.627 595.071 C843.786 588.893 851.216 585.803 859.92 585.803 C868.603 585.803 876.024 588.893 882.182 595.071 C888.361 601.23 891.451 608.65 891.451 617.333 C891.451 626.037 888.361 633.468 882.182 639.626 C876.024 645.784 868.603 648.863 859.92 648.863 C850.39 648.863 842.386 645.172 835.908 637.789 Z M871.036 628.48 C874.135 625.4 875.685 621.686 875.685 617.333 C875.685 613.002 874.135 609.297 871.036 606.218 C867.957 603.118 864.251 601.568 859.92 601.568 C855.568 601.568 851.853 603.118 848.774 606.218 C845.296 609.695 843.782 613.971 844.232 619.045 C844.5 622.063 845.707 624.953 847.661 627.267 C850.945 631.155 855.03 633.099 859.92 633.099 C864.251 633.099 867.957 631.559 871.036 628.48 Z"/>
-        </svg>
-        <!-- The water running off the logo as it rises out of it (home.js):
-             a film of burgundy water over the letters that recedes from the
-             middle outward with a liquid edge (and a line of light along it),
-             and the water spilling outward over the letters' edges -->
-        <svg class="hero__wet" viewBox="188.55 399.61 702.9 280.79" aria-hidden="true">
-          <defs>
-            <filter id="wet-wobble" x="-20%" y="-40%" width="140%" height="180%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="7" result="n"/>
-              <feDisplacementMap in="SourceGraphic" in2="n" scale="60" xChannelSelector="R" yChannelSelector="G"/>
-            </filter>
-            <filter id="wet-spill" x="-10%" y="-20%" width="120%" height="140%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="4" result="n"/>
-              <feDisplacementMap in="SourceGraphic" in2="n" scale="12" xChannelSelector="R" yChannelSelector="G" result="d"/>
-              <feGaussianBlur in="d" stdDeviation="1.2"/>
-            </filter>
-            <radialGradient id="wet-dry" gradientUnits="userSpaceOnUse" cx="540" cy="545" r="0">
-              <stop offset="0.86" stop-color="#000"/><stop offset="1" stop-color="#fff"/>
-            </radialGradient>
-            <radialGradient id="wet-front" gradientUnits="userSpaceOnUse" cx="540" cy="545" r="0">
-              <stop offset="0.8" stop-color="#000"/><stop offset="0.93" stop-color="#fff"/><stop offset="1" stop-color="#000"/>
-            </radialGradient>
-            <mask id="wet-film-mask" maskUnits="userSpaceOnUse" x="100" y="300" width="880" height="480">
-              <rect x="100" y="300" width="880" height="480" fill="url(#wet-dry)" filter="url(#wet-wobble)"/>
-            </mask>
-            <mask id="wet-front-mask" maskUnits="userSpaceOnUse" x="100" y="300" width="880" height="480">
-              <rect x="100" y="300" width="880" height="480" fill="url(#wet-front)" filter="url(#wet-wobble)"/>
-            </mask>
-          </defs>
-          <g class="hero__spill" filter="url(#wet-spill)">
-            <use href="#hero-logo-art" x="188.55" y="399.61" width="702.9" height="280.79"/>
-          </g>
-          <g class="hero__film" mask="url(#wet-film-mask)">
-            <use href="#hero-logo-art" x="188.55" y="399.61" width="702.9" height="280.79"/>
-          </g>
-          <g class="hero__front" mask="url(#wet-front-mask)">
-            <use href="#hero-logo-art" x="188.55" y="399.61" width="702.9" height="280.79"/>
-          </g>
         </svg>
       </div>
 

@@ -79,24 +79,9 @@ const DRIP = {
   wobble: 7,       // how much they wobble on the ring (px)
   blur: 12,        // blur on pieces as they dissolve (px)
   swell: 0.12,     // how much they grow as they dissolve (0.12 = 12%)
+  introDelay: 350, // wait after the page loads before the drop falls (ms)
   textDelay: 150,  // after the logo has formed, wait this long before the rest flows in (ms)
   textTime: 1200,  // how long the menu and other text take to flow in (ms)
-};
-
-// Page load: the logo rises out of the water, seen from above: it comes up
-// toward you (growing from smaller to its full size) out of the burgundy (it
-// starts the same color as the water and the cream comes up through it), and
-// the water runs off it: a film over the letters recedes from the middle
-// outward, spills over their edges and sends ripples into the water around it.
-const RISE = {
-  delay: 300,      // wait after the page loads before it starts rising (ms)
-  time: 1900,      // how long it takes to come up (ms)
-  stagger: 160,    // the right end starts this much after the left (ms)
-  from: 0.8,       // how big it starts (1 = full size): smaller = deeper
-  run: 1500,       // how long the water takes to run off it (ms), starting part way up
-  runAt: 0.35,     // when the water starts running off (share of the rise)
-  spill: 12,       // how far the water spills over the edges (logo units)
-  ripples: 7,      // how many ripples the spilling water makes around it
 };
 
 // Menu jumps (Work / Contact / Scroll / logo / Back to top)
@@ -149,7 +134,6 @@ const heroLogo = document.querySelector('.hero__logo');
 const scenePieces = windPieces;  // (core.js)
 
 const heroLogoPieces = logoPieces(heroLogo, { tilt: 60, blur: 8 });
-
 const heroTextPieces = scenePieces(heroScene);
 const workPieces = scenePieces(workScene);
 const contactPieces = scenePieces(contactScene);
@@ -520,26 +504,8 @@ const hero = {
 const dripLook = { amount: 0, x: 0, y: 0, blur: 0, size: 1 };
 function dripAt(pc, now) {
   const d = hero.drip;
-  if (d.mode === 'rise') return riseLook(pc, now - d.start, dripLook);
   return waterLook(pc, d.x, d.y, (now - d.start) / 1000, d.mode, DRIP, 1, dripLook);
 }
-
-// Rising out of the water (RISE): how submerged this piece still is. It
-// grows toward you around the middle of the logo (so the pieces stay
-// together) and the cream comes up through the burgundy (its opacity).
-let riseMid = null;  // the middle of the logo (page coordinates), measured when the rise starts
-function riseLook(pc, ms, out) {
-  const u = clamp01((ms - pc.order * RISE.stagger) / RISE.time);  // 0 = deep, 1 = at the surface
-  const e = 1 - (1 - u) ** 3;                                     // comes up, slowing as it surfaces
-  const k = RISE.from + (1 - RISE.from) * e;                      // its size
-  out.amount = (1 - e) ** 1.6;
-  out.x = riseMid ? (pc.cx - riseMid.x) * (k - 1) : 0;
-  out.y = riseMid ? (pc.cy - riseMid.y) * (k - 1) : 0;
-  out.blur = 0;
-  out.size = k;
-  return out;
-}
-const riseEnd = () => RISE.stagger + RISE.time;  // (ms)const riseEnd = () => RISE.stagger + RISE.time;  // (ms)
 
 // Start a drop on the logo at (x, y) on screen
 function startDrip(mode, x, y, start = performance.now()) {
@@ -554,8 +520,8 @@ function startDrip(mode, x, y, start = performance.now()) {
 // Called every frame by the logo's loop: what happens when a drop finishes
 function checkDrip(now) {
   const d = hero.drip;
-  if (!d || now < d.start + (d.mode === 'rise' ? riseEnd() : (d.reach / DRIP.speed) * 1000)) return;  // still playing
-  if (d.mode !== 'out') {
+  if (!d || now < d.start + (d.reach / DRIP.speed) * 1000) return;  // still playing
+  if (d.mode === 'in') {
     hero.drip = null;                 // logo has formed
     if (d.intro && !isPhone) startIntroText(now);  // now the menu and other text flow in
     return;
@@ -575,8 +541,8 @@ function checkDrip(now) {
 
 // ---- Projects floating on the water ----
 // The first project of each category floats around the logo: it drifts
-// slowly, bobs and turns, and bumps off the edges, the logo and the others
-// (they never overlap). When a ripple reaches one, it's pushed along the wave (away from
+// slowly, bobs and turns, and bumps off the edges and the others (they never
+// overlap each other, but can drift behind the logo). When a ripple reaches one, it's pushed along the wave (away from
 // where the drop fell), then slows back to a drift. Clicking one opens its
 // project. FLOAT: how they move.
 const FLOAT = {
@@ -587,7 +553,7 @@ const FLOAT = {
   push: 170,       // how hard the closest ripples push them (px per second)
   reach: 560,      // how far from a drop they still feel it (px)
   calm: 1.1,       // how quickly a push dies down (higher = sooner)
-  showAfter: 2900, // after the page opens, wait this long before they fade in (ms)
+  showAfter: 2600, // after the page opens, wait this long before they fade in (ms)
 };
 const floatBox = heroScene.querySelector('.floaters');
 const floaters = workRows.map((li, k) => {
@@ -660,9 +626,8 @@ function floatFrame(now) {
     if (f.x < mx || f.x > W - mx) { f.x = Math.max(mx, Math.min(W - mx, f.x)); f.vx *= -0.5; f.dir = Math.PI - f.dir; }
     if (f.y < my + 60 || f.y > H - my - 60) { f.y = Math.max(my + 60, Math.min(H - my - 60, f.y)); f.vy *= -0.5; f.dir = -f.dir; }
   });
-  // Solid: they bump off the logo and off each other instead of overlapping
+  // Solid: they bump off each other instead of overlapping (they can drift behind the logo)
   floaters.forEach((f, i) => {
-    bumpOff(f, (floatLogo.l + floatLogo.r) / 2, (floatLogo.t + floatLogo.b) / 2, floatLogo.r - floatLogo.l, floatLogo.b - floatLogo.t, true);
     floaters.slice(i + 1).forEach((o) => bumpOff(f, o.x, o.y, o.w, o.h, false, o));
   });
   floaters.forEach((f) => {
@@ -699,7 +664,7 @@ function bumpOff(f, cx, cy, w, h, fixed, o) {
 Site.onMeasure.push(measureFloaters);
 window.addEventListener('scroll', () => { if (isPhone) floatScene = heroScene.getBoundingClientRect(); }, { passive: true });  // (phones: the scene scrolls)
 requestAnimationFrame(floatFrame);
-setTimeout(() => floatBox.classList.add('is-ready'), location.hash ? 0 : FLOAT.showAfter);  // (after the logo has risen)
+setTimeout(() => floatBox.classList.add('is-ready'), location.hash ? 0 : (reduceMotion ? 300 : FLOAT.showAfter));
 
 // ---- Drop trails: a soft blur on the side each drop is moving toward ----
 // Each drop gets a tiny SVG filter: a blurred, shifted, faint copy of itself
@@ -762,11 +727,10 @@ function renderHeroLogo() {
 
     // Scroll (liquid wind) or water drop, + hover offset
     const off = reduceMotion ? STILL : windOffset(pc, useDrip ? 0 : wind, WIND.logoDrift, false);
-    const moves = !reduceMotion || (useDrip && hero.drip.mode === 'rise');  // (the rise plays with reduce motion on too)
-    let x = pc.ox + (useDrip && moves ? drip.x : 0);
-    let y = pc.oy + (useDrip && moves ? drip.y : 0);
+    let x = pc.ox + (useDrip && !reduceMotion ? drip.x : 0);
+    let y = pc.oy + (useDrip && !reduceMotion ? drip.y : 0);
     let rot = reduceMotion ? 0 : pc.h * HOVER.tilt * Math.sign(pc.rot || 1);
-    let size = useDrip && moves ? drip.size : 1;
+    let size = useDrip && !reduceMotion ? drip.size : 1;
 
     // Resting motion: only the three drops, each on its own rhythm
     let liquid = '';
@@ -798,7 +762,7 @@ function renderHeroLogo() {
 
     const transform = windTransform(pc, off, x, y, rot, size, liquid);
     const goneBlur = useDrip ? drip.blur : a * pc.blur;
-    const blur = !moves ? 0 : (goneBlur + pc.h * HOVER.blur) / s;
+    const blur = reduceMotion ? 0 : (goneBlur + pc.h * HOVER.blur) / s;
     applyStyle(pc, transform, a >= 1 ? '' : blurStyle(blur), String(round2((1 - a) * (1 - pc.h * HOVER.fade))));
   });
 }
@@ -815,7 +779,7 @@ function heroFrame(now) {
   hero.skip = calm && !hero.skip;
   if (!hero.skip) renderHeroLogo();
   checkDrip(now);
-  const away = hero.progress >= 1 || isPhone || reduceMotion;  // blown away (phones, reduce motion: the logo only moves while rising)
+  const away = hero.progress >= 1 || isPhone;  // blown away (phones: the logo only moves during its water drop)
   if (!away || hero.drip) requestAnimationFrame(heroFrame);
   else hero.running = false;  // logo is gone: nothing to animate
 }
@@ -843,53 +807,10 @@ const introPieces = () => [...navPieces, ...heroTextPieces];
 function startIntro() {
   // (phones: only the logo animates; the menu and corner text are simply there)
   if (!isPhone) introPieces().forEach((pc) => { pc.click = 1; pc.clickIn = true; pc.clickWater = null; renderPiece(pc); });
-  // Test: ?intro=water plays the WebGL version (water-intro.js) instead
-  if (/[?&]intro=water/.test(location.search) && typeof waterIntro === 'function' &&
-      waterIntro(heroLogo, { addDrop: (x, y) => background.addDrop(x, y), done: () => { if (!isPhone) startIntroText(performance.now()); } })) return;
-  // The logo rises out of the water
-  const start = performance.now() + RISE.delay;
-  const xs = heroLogoPieces.map((pc) => pc.cx), ys = heroLogoPieces.map((pc) => pc.cy);
-  riseMid = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
-  hero.drip = { mode: 'rise', x: 0, y: 0, start, reach: 0, done: false, intro: true };
-  wakeHero();
-  startWet(start);
-}
-
-// The water running off the rising logo (RISE): the film recedes from the
-// middle outward (its edge lit), the water spills over the letters' edges,
-// and ripples spread from around the logo as it pours off
-const heroWet = heroLogo.querySelector('.hero__wet');
-const wetDry = heroWet.querySelector('#wet-dry');
-const wetFront = heroWet.querySelector('#wet-front');
-const wetSpill = heroWet.querySelector('.hero__spill');
-function startWet(start) {
-  const runFrom = start + RISE.time * RISE.runAt;
-  const far = 430;  // (logo units: from the middle to past the far ends)
-  heroWet.classList.add('is-on');
-  const step = (now) => {
-    const u = clamp01((now - runFrom) / RISE.run);  // 0 = covered, 1 = all run off
-    const r = (far * (1 - (1 - u) ** 2)).toFixed(1);
-    wetDry.setAttribute('r', r);
-    wetFront.setAttribute('r', r);
-    heroWet.querySelector('.hero__film').style.opacity = String(round2(1 - u ** 3));
-    heroWet.querySelector('.hero__front').style.opacity = String(round2(u <= 0 ? 0 : Math.min(1, u * 6) * (1 - u ** 2)));
-    // the spill: an outline that spreads out over the edges as the water pours off, then fades
-    const sp = clamp01((now - runFrom) / (RISE.run * 1.2));
-    wetSpill.style.strokeWidth = String(round2(RISE.spill * Math.sin(Math.PI * Math.min(1, sp * 1.2)) ** 0.7));
-    wetSpill.style.opacity = String(round2(sp <= 0 ? 0 : 1 - sp ** 1.5));
-    if (u < 1 || sp < 1) requestAnimationFrame(step);
-    else heroWet.classList.remove('is-on');
-  };
-  requestAnimationFrame(step);
-  // ripples from around the logo, where the water pours off its edges
-  const box = heroLogo.querySelector('.logo').getBoundingClientRect();
-  for (let k = 0; k < RISE.ripples; k++) {
-    const a = (k / RISE.ripples) * Math.PI * 2 + 0.4;
-    const x = box.left + box.width / 2 + Math.cos(a) * box.width * 0.5;
-    const y = box.top + box.height / 2 + Math.sin(a) * box.height * 0.55;
-    const at = runFrom + RISE.run * (0.35 + 0.4 * (k / RISE.ripples)) + Math.random() * 120;
-    setTimeout(() => { if (hero.progress < 0.2) background.addDrop(x, y); }, Math.max(0, at - performance.now()));
-  }
+  // The drop falls on the middle of the mark (the three drops)
+  const mark = heroLogo.querySelector('.logo-mark').getBoundingClientRect();
+  startDrip('in', mark.left + mark.width / 2, mark.top + mark.height / 2, performance.now() + DRIP.introDelay);
+  hero.drip.intro = true;
 }
 
 function startIntroText(now, pieces = introPieces()) {
@@ -909,7 +830,7 @@ function startIntroText(now, pieces = introPieces()) {
 }
 
 function wakeHero() {
-  if (reduceMotion && !(hero.drip && hero.drip.mode === 'rise')) { renderHeroLogo(); return; }  // (the rise out of the water plays anyway)
+  if (reduceMotion) { renderHeroLogo(); return; }
   if (hero.running) return;
   hero.running = true;
   hero.last = performance.now();
@@ -1188,7 +1109,7 @@ if (location.hash === '#work' || location.hash === '#contact') {
 } else {
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   window.scrollTo({ top: 0, behavior: 'instant' });
-  startIntro();  // the logo rises out of the water, then the rest flows in (plays with reduce motion on too)
+  if (!reduceMotion) startIntro();  // the logo forms out of a water drop, then the rest flows in
 }
 smoothY = window.scrollY;
 if (!isPhone) update(smoothY);

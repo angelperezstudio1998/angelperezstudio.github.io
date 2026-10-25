@@ -505,31 +505,6 @@ img.floater__img { background: none; }
 /* The logo casts a soft shadow down onto the background (.hero__shadow, a
    live copy of the logo). --shadow-drop: how far below the logo it falls. */
 .hero__logo { position: relative; isolation: isolate; --shadow-drop: 9%; }
-/* The water running off as the logo rises out of it (home.js animates it):
-   a film of burgundy water over the letters, receding from the middle with a
-   line of light along its edge, and the water spilling outward over the
-   letters' edges (an outline that spreads and fades). Hidden otherwise. */
-.hero__wet {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-  visibility: hidden;
-}
-.hero__wet.is-on { visibility: visible; }
-/* The WebGL version of the rise (water-intro.js, ?intro=water): its canvas
-   over the logo; the real logo waits hidden, then fades in as it hands over */
-.hero__water { position: absolute; z-index: 2; pointer-events: none; transition: opacity 0.45s ease; }
-.hero__logo .logo,
-.hero__logo .hero__shadow { transition: opacity 0.45s ease; }
-.hero__logo.is-water .logo,
-.hero__logo.is-water .hero__shadow { opacity: 0; transition: none; }
-.hero__film { color: rgba(59, 0, 8, 0.62); }
-.hero__front { color: rgba(255, 246, 230, 0.55); }
-.hero__spill { color: transparent; fill: none; stroke: rgba(214, 199, 174, 0.22); stroke-width: 0; stroke-linejoin: round; }
 .hero__shadow {
   position: absolute;
   left: 0;
