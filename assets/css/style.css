@@ -646,90 +646,181 @@ ul { padding: 0; list-style: none; }
   transition: --hole 0.35s ease 0.1s, --cut-l 0.35s cubic-bezier(.2, .7, .2, 1), --cut-r 0.35s cubic-bezier(.2, .7, .2, 1);
 }
 
-/* The project popup (a card's project page). home.js fills it in and opens
-   it; Esc, the × or clicking outside closes it.
-   No hard edges: it's frosted glass that fades to transparent all around
-   (--soft), and it appears with a water ripple: a ring spreading from the
-   card you clicked (--rx, --ry, set by home.js) reveals it, with a soft edge
-   (--ring); closing pulls it back in. */
-@property --reveal { syntax: "<length>"; inherits: false; initial-value: 0px; }
+/* The project view (a card's project page, almost like a page of its own).
+   It fills the screen: the project slides in from the right with a water
+   ripple coming from the right (a soft wavefront that reveals it, --reveal,
+   with a band of light on its crest), and fades to transparent toward the
+   left. There, the other projects of the same category fade in as a column
+   you scroll up and down (phones: a strip along the bottom). home.js fills it
+   in and opens it; the ×, Esc or the browser's back button close it. */
+@property --reveal { syntax: "<length>"; inherits: true; initial-value: 0px; }
 .project {
-  width: min(1040px, calc(100vw - 2 * var(--gutter)));
+  position: fixed;
+  inset: 0;
+  width: 100vw;                /* (also over the page's scrollbar space) */
+  height: 100%;
   max-width: none;
-  max-height: min(92vh, 1160px);
-  margin: auto;
-  padding: var(--soft);       /* (the content stays clear of the faded edges) */
+  max-height: none;
+  margin: 0;
+  padding: 0;
   border: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.3));
-  -webkit-backdrop-filter: blur(30px) saturate(1.3);
-  backdrop-filter: blur(30px) saturate(1.3);
+  background: transparent;
   color: var(--burgundy);
   overflow: hidden;
-  --soft: 64px;
-  --ring: 140px;
+  --list: clamp(180px, 17vw, 260px);  /* the column of other projects */
+  --fade: 22vw;                        /* how far the project fades out toward the left */
+  --crest: 120px;                      /* the ripple's soft wavefront */
   --reveal: 0px;
-  -webkit-mask-image:
-    linear-gradient(to right, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
-    linear-gradient(to bottom, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
-    radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), #000 calc(var(--reveal) - var(--ring)), transparent var(--reveal));
-  -webkit-mask-composite: source-in, source-in;
-          mask-image:
-    linear-gradient(to right, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
-    linear-gradient(to bottom, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
-    radial-gradient(circle at var(--rx, 50%) var(--ry, 50%), #000 calc(var(--reveal) - var(--ring)), transparent var(--reveal));
-          mask-composite: intersect, intersect;
-  transition: --reveal 0.55s cubic-bezier(.5, 0, .75, 0);  /* closing: drawn back in */
-}
-/* What scrolls is the inside, within the solid middle (so its scrollbar
-   shows); its content fades out softly at the top and bottom as it scrolls.
-   The bar: thin, rounded, burgundy, on a see-through track, no arrow
-   buttons. Chrome, Edge and Safari use the ::-webkit-scrollbar parts;
-   Firefox the two standard properties. */
-.project__inner {
-  max-height: calc(min(92vh, 1160px) - 2 * var(--soft));
-  padding: 32px clamp(0px, 3vw, 32px);
-  overflow-y: auto;
-  overscroll-behavior: contain;  /* scrolling it never scrolls the page behind */
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 32px, #000 calc(100% - 32px), transparent);
-          mask-image: linear-gradient(to bottom, transparent, #000 32px, #000 calc(100% - 32px), transparent);
-}
-.project__inner:focus { outline: none; }  /* (it gets the focus when the popup opens, so the arrow keys scroll it; no box drawn around it) */
-.project__inner::-webkit-scrollbar { width: 14px; }
-.project__inner::-webkit-scrollbar-track { background: transparent; margin: 24px 0; }
-.project__inner::-webkit-scrollbar-thumb {
-  border: 4px solid transparent;  /* (space around the bar inside its 14px) */
-  border-radius: 7px;
-  background: rgba(59, 0, 8, 0.3) padding-box;
-}
-.project__inner::-webkit-scrollbar-thumb:hover { background-color: rgba(59, 0, 8, 0.5); }
-.project__inner::-webkit-scrollbar-button { display: none; }
-@supports not selector(::-webkit-scrollbar) {
-  .project__inner { scrollbar-width: thin; scrollbar-color: rgba(59, 0, 8, 0.3) transparent; }
+  transition: --reveal 0.55s cubic-bezier(.5, 0, .75, 0);  /* closing: drawn back to the right */
 }
 .project.is-shown {
-  --reveal: var(--reveal-to, 2000px);  /* (home.js: far enough to cover it all) */
-  transition: --reveal 0.9s cubic-bezier(.25, .6, .3, 1);  /* opening: spreads out like a ripple, slowing down */
+  --reveal: 300vmax;
+  transition: --reveal 1.1s cubic-bezier(.25, .6, .3, 1);  /* opening: spreads from the right, slowing down */
 }
-.project::backdrop {           /* no tint: the page only slightly blurred, so the glass reads against it */
+.project::backdrop {           /* no tint: the whole page strongly blurred behind it, so the left side is calm */
   background-color: transparent;
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(40px);
+  backdrop-filter: blur(40px);
   opacity: 0;
   transition: opacity 0.5s ease;
 }
 .project.is-shown::backdrop { opacity: 1; }
 /* While it's open the page behind can't scroll (home.js adds .is-locked).
    The page always keeps its scrollbar's space, so locking it doesn't make
-   everything shift sideways. */
+   everything shift sideways. That space can't be covered by the view, so
+   while it's locked it takes the color of the view's right edge. (The only
+   time <html> gets a background: normally it would hide the pattern
+   canvases, but then the page is covered anyway.) */
 html { scrollbar-gutter: stable; }
-html.is-locked { overflow: hidden; }
-.project__close {
-  position: sticky;
+html.is-locked { overflow: hidden; background: rgb(243, 238, 231); }
+
+/* The project: a white glass layer over the whole screen that fades to
+   transparent toward the left (over the blurred page), revealed by the
+   ripple from the right while it slides in a little */
+.project__view {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, transparent var(--list), rgba(255, 255, 255, 0.55) calc(var(--list) + var(--fade)), rgba(255, 255, 255, 0.7));
+  --wave: radial-gradient(circle at 115% 50%, #000 calc(var(--reveal) - var(--crest)), transparent var(--reveal));
+  -webkit-mask-image: var(--wave);
+          mask-image: var(--wave);
+  transform: translateX(14%);
+  transition: transform 0.55s cubic-bezier(.5, 0, .75, 0);
+}
+.project.is-shown .project__view { transform: none; transition: transform 1.1s cubic-bezier(.2, .7, .2, 1); }
+.project__view::before {       /* light catching the ripple's crest as it passes */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 115% 50%, transparent calc(var(--reveal) - var(--crest)), rgba(255, 255, 255, 0.7) calc(var(--reveal) - var(--crest) * 0.45), transparent var(--reveal));
+}
+/* What scrolls: the project's content, kept clear of the faded part; it
+   fades out softly at the top and bottom as it scrolls */
+.project__inner {
+  position: relative;
+  height: 100%;
+  padding: clamp(72px, 10vh, 120px) clamp(32px, 6vw, 96px) 96px calc(var(--list) + var(--fade) * 0.8);
+  overflow-y: auto;
+  overscroll-behavior: contain;  /* scrolling it never scrolls the page behind */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 56px, #000 calc(100% - 56px), transparent);
+          mask-image: linear-gradient(to bottom, transparent, #000 56px, #000 calc(100% - 56px), transparent);
+  transition: opacity 0.25s ease;
+}
+.project__inner.is-switching { opacity: 0; }  /* (changing to another project from the column) */
+.project__inner:focus { outline: none; }  /* (it can get the focus so the arrow keys scroll it; no box drawn around it) */
+/* Scrollbars here: a thin rounded burgundy bar on a see-through track, no
+   arrow buttons. Chrome, Edge and Safari use the ::-webkit-scrollbar parts;
+   Firefox the two standard properties. */
+.project__inner::-webkit-scrollbar,
+.project__list::-webkit-scrollbar { width: 14px; height: 14px; }
+.project__inner::-webkit-scrollbar-track,
+.project__list::-webkit-scrollbar-track { background: transparent; margin: 56px; }
+.project__inner::-webkit-scrollbar-thumb,
+.project__list::-webkit-scrollbar-thumb {
+  border: 4px solid transparent;  /* (space around the bar inside its 14px) */
+  border-radius: 7px;
+  background: rgba(59, 0, 8, 0.3) padding-box;
+}
+.project__inner::-webkit-scrollbar-thumb:hover,
+.project__list::-webkit-scrollbar-thumb:hover { background-color: rgba(59, 0, 8, 0.5); }
+.project__inner::-webkit-scrollbar-button,
+.project__list::-webkit-scrollbar-button { display: none; }
+@supports not selector(::-webkit-scrollbar) {
+  .project__inner,
+  .project__list { scrollbar-width: thin; scrollbar-color: rgba(59, 0, 8, 0.3) transparent; }
+}
+
+/* The other projects of the category: a column on the left that scrolls up
+   and down; they fade in one after another once the project is in. The one
+   you're looking at is marked. */
+.project__list {
+  position: absolute;
   top: 0;
-  float: right;
-  width: 40px;
-  height: 40px;
-  margin: -8px -8px 0 16px;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  width: var(--list);
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: clamp(72px, 10vh, 120px) 24px 96px var(--gutter);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 56px, #000 calc(100% - 56px), transparent);
+          mask-image: linear-gradient(to bottom, transparent, #000 56px, #000 calc(100% - 56px), transparent);
+}
+.project__item {
+  flex: none;
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.project.is-shown .project__item {
+  opacity: 0.55;
+  transform: none;
+  transition: opacity 0.5s ease calc(0.45s + var(--k) * 70ms), transform 0.6s cubic-bezier(.2, .7, .2, 1) calc(0.45s + var(--k) * 70ms);
+}
+.project.is-shown .project__item:hover,
+.project.is-shown .project__item:focus-visible,
+.project.is-shown .project__item[aria-current="true"] { opacity: 1; transition-delay: 0s; }
+.project__item:focus { outline: none; }
+.project__thumb {              /* soft-edged like the cards: fades to transparent all around */
+  display: block;
+  width: 100%;
+  aspect-ratio: var(--ratio, 0.8);
+  background: rgba(59, 0, 8, 0.1);
+  --soft: 18%;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent);
+  -webkit-mask-composite: source-in;
+          mask-image:
+    linear-gradient(to right, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent);
+          mask-composite: intersect;
+}
+.project__thumb:has(img) { background: none; }
+.project__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.project__item-name { font-size: 13px; font-weight: 500; }
+
+.project__close {
+  position: absolute;
+  top: 20px;
+  right: var(--gutter);
+  z-index: 2;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.5);
@@ -737,13 +828,17 @@ html.is-locked { overflow: hidden; }
   font-size: 22px;
   line-height: 1;
   cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
+.project.is-shown .project__close { opacity: 1; transition: opacity 0.4s ease 0.4s; }
 .project__close:focus { outline: none; }
 .project__close:focus-visible { background: rgba(255, 255, 255, 0.9); }
+
 .project__kind { color: var(--fg-3); }
 .project__title {
   margin: 10px 0 12px;
-  font-size: clamp(32px, 5vw, 64px);
+  font-size: clamp(36px, 5.5vw, 80px);
   font-weight: 500;
   letter-spacing: -0.03em;
   line-height: 1.05;
@@ -993,9 +1088,30 @@ html.is-locked { overflow: hidden; }
   }
   .work-card__desc { opacity: 1; font-size: 12px; }  /* (no hover: always shown) */
   .project__pair { grid-template-columns: 1fr; }
-  .project { width: calc(100vw - 16px); --soft: 28px; --ring: 90px; }  /* (narrow screens: a thinner faded edge) */
-  .project__inner { padding: 24px 6px; }
-  .project__close { margin-right: 0; }
+  /* Phones, the project view: the project on top, fading out toward the
+     bottom, and the other projects in a strip along the bottom you swipe
+     sideways */
+  .project { --list: 0px; --strip: 150px; }
+  .project__view { background: linear-gradient(to bottom, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.55) calc(100% - var(--strip) - 90px), transparent calc(100% - var(--strip) + 10px)); }
+  .project__inner { padding: 76px 20px calc(var(--strip) + 48px); }
+  .project__list {
+    top: auto;
+    right: 0;
+    width: auto;
+    height: var(--strip);
+    flex-direction: row;
+    gap: 14px;
+    padding: 10px 20px 18px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+            mask-image: linear-gradient(to right, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+  }
+  .project__list::-webkit-scrollbar { display: none; }
+  .project__item { width: auto; height: 100%; grid-template-rows: 1fr auto; }
+  .project__thumb { width: auto; height: 100%; }
+  .project__close { top: 14px; right: 14px; }
   .work-cards--branding,
   .work-cards--web { --h: 150px; }
 }
@@ -1044,7 +1160,17 @@ html.is-locked { overflow: hidden; }
   .work-item__info { transition: color 0.3s ease !important; }
   .line.has-cut { transition: --hole 0.35s ease !important; }
   .project { transition: --reveal 0.55s cubic-bezier(.5, 0, .75, 0) !important; }
-  .project.is-shown { transition: --reveal 0.9s cubic-bezier(.25, .6, .3, 1) !important; }
+  .project.is-shown { transition: --reveal 1.1s cubic-bezier(.25, .6, .3, 1) !important; }
   .project::backdrop { transition: opacity 0.5s ease !important; }
+  .project__view { transition: transform 0.55s cubic-bezier(.5, 0, .75, 0) !important; }
+  .project.is-shown .project__view { transition: transform 1.1s cubic-bezier(.2, .7, .2, 1) !important; }
+  .project__inner { transition: opacity 0.25s ease !important; }
+  .project__item { transition: opacity 0.3s ease, transform 0.3s ease !important; }
+  .project.is-shown .project__item { transition: opacity 0.5s ease calc(0.45s + var(--k) * 70ms), transform 0.6s cubic-bezier(.2, .7, .2, 1) calc(0.45s + var(--k) * 70ms) !important; }
+  .project.is-shown .project__item:hover,
+  .project.is-shown .project__item:focus-visible,
+  .project.is-shown .project__item[aria-current="true"] { transition-delay: 0s !important; }
+  .project__close { transition: opacity 0.3s ease !important; }
+  .project.is-shown .project__close { transition: opacity 0.4s ease 0.4s !important; }
   .line.has-cut.is-cut { transition: --hole 0.35s ease 0.1s, --cut-l 0.35s cubic-bezier(.2, .7, .2, 1), --cut-r 0.35s cubic-bezier(.2, .7, .2, 1) !important; }
 }

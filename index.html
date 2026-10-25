@@ -40,6 +40,8 @@
     // Phones get the simpler, normally scrolling version (home.js, section 8).
     // Keep 700 the same as PHONE.width in home.js.
     if (window.matchMedia('(max-width: 699.98px)').matches) document.documentElement.classList.add('is-phone');
+    // A project's address (?p=…) lands on the work list, with the project open on top
+    if (/[?&]p=/.test(location.search) && !location.hash) history.replaceState(null, '', location.href + '#work');
     // Arriving at #work / #contact (e.g. from the About page): start on cream,
     // so there's no flash of burgundy before the scripts take over
     if (location.hash === '#work' || location.hash === '#contact') document.documentElement.classList.add('is-arriving-cream', 'is-entering');
@@ -53,9 +55,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 
   <!-- ?v=… makes browsers fetch fresh files after each update (change it every time you publish) -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261020a">
-  <script src="assets/js/core.js?v=20261020a" defer></script>
-  <script src="assets/js/home.js?v=20261020a" defer></script>
+  <link rel="stylesheet" href="assets/css/style.css?v=20261025a">
+  <script src="assets/js/core.js?v=20261025a" defer></script>
+  <script src="assets/js/home.js?v=20261025a" defer></script>
 </head>
 <body>
 
@@ -159,11 +161,11 @@
           </a>
           <!-- One card per project: they rise next to the title when you hover the
                row (phones: tap the row to open them as a strip); clicking one opens
-               its project page in a popup. Placeholders for now: put the project's
+               its project page (sliding in from the right). Placeholders for now: put the project's
                image inside its button (<img src="…" alt="">) and write its name and
-               quick line. The popup's page content goes in a
+               quick line. The project view's content goes in a
                <template class="work-card__page"> right after the button (see the
-               first poster); without one, the popup shows a placeholder. -->
+               first poster); without one, it shows a placeholder. -->
           <ul class="work-cards work-cards--posters" aria-label="Posters projects">
             <li class="work-card">
               <button class="work-card__open ph" type="button"><span class="work-card__desc"><span class="work-card__name">Poster 01</span> A quick line about the project</span></button>
@@ -196,7 +198,7 @@
           </a>
           <!-- One card per project: they rise next to the title when you hover the
                row (phones: tap the row to open them as a strip); clicking one opens
-               its project page in a popup. Placeholders for now: put the project's
+               its project page (sliding in from the right). Placeholders for now: put the project's
                image inside its button (<img src="…" alt="">) and write its name and
                quick line. The popup's page content goes in a
                <template class="work-card__page"> right after the button (see the
@@ -218,7 +220,7 @@
           </a>
           <!-- One card per project: they rise next to the title when you hover the
                row (phones: tap the row to open them as a strip); clicking one opens
-               its project page in a popup. Placeholders for now: put the project's
+               its project page (sliding in from the right). Placeholders for now: put the project's
                image inside its button (<img src="…" alt="">) and write its name and
                quick line. The popup's page content goes in a
                <template class="work-card__page"> right after the button (see the
@@ -251,16 +253,22 @@
 
   </main>
 
-  <!-- The project popup: a card's project page (filled in by home.js from the
-       card that was clicked: its row, name, quick line and page template) -->
+  <!-- The project view: a card's project page, almost like a page of its own
+       (it slides in from the right and fills the screen; its address is
+       ?p=the-project-name). On the left: the other projects of the same
+       category. Filled in by home.js from the cards: their row, name, quick
+       line and page template. -->
   <dialog class="project" aria-labelledby="project-title">
-    <div class="project__inner">
-      <button class="project__close" type="button" aria-label="Close">×</button>
-      <p class="label project__kind"></p>
-      <h2 class="project__title" id="project-title"></h2>
-      <p class="project__lead"></p>
-      <div class="project__body"></div>
+    <nav class="project__list" aria-label="More projects"></nav>
+    <div class="project__view">
+      <div class="project__inner">
+        <p class="label project__kind"></p>
+        <h2 class="project__title" id="project-title"></h2>
+        <p class="project__lead"></p>
+        <div class="project__body"></div>
+      </div>
     </div>
+    <button class="project__close" type="button" aria-label="Close">×</button>
   </dialog>
 
   <!-- Invisible tall block that gives the page its scroll length (set by home.js) -->
