@@ -843,6 +843,9 @@ const introPieces = () => [...navPieces, ...heroTextPieces];
 function startIntro() {
   // (phones: only the logo animates; the menu and corner text are simply there)
   if (!isPhone) introPieces().forEach((pc) => { pc.click = 1; pc.clickIn = true; pc.clickWater = null; renderPiece(pc); });
+  // Test: ?intro=water plays the WebGL version (water-intro.js) instead
+  if (/[?&]intro=water/.test(location.search) && typeof waterIntro === 'function' &&
+      waterIntro(heroLogo, { addDrop: (x, y) => background.addDrop(x, y), done: () => { if (!isPhone) startIntroText(performance.now()); } })) return;
   // The logo rises out of the water
   const start = performance.now() + RISE.delay;
   const xs = heroLogoPieces.map((pc) => pc.cx), ys = heroLogoPieces.map((pc) => pc.cy);
