@@ -505,9 +505,10 @@ img.floater__img { background: none; }
 /* The logo casts a soft shadow down onto the background (.hero__shadow, a
    live copy of the logo). --shadow-drop: how far below the logo it falls. */
 .hero__logo { position: relative; isolation: isolate; --shadow-drop: 9%; }
-/* The water sliding off as the logo rises out of the water: a bright copy of
-   the logo seen only through a soft band (--wet: where the band is, 0 = above
-   the logo, 1 = below it), which home.js runs down over the letters */
+/* The water running off as the logo rises out of it (home.js animates it):
+   a film of burgundy water over the letters, receding from the middle with a
+   line of light along its edge, and the water spilling outward over the
+   letters' edges (an outline that spreads and fades). Hidden otherwise. */
 .hero__wet {
   position: absolute;
   left: 0;
@@ -516,24 +517,12 @@ img.floater__img { background: none; }
   height: 100%;
   overflow: visible;
   pointer-events: none;
-  color: #fffaf0;
-  opacity: 0;
-  --wet: 0;
-  -webkit-mask-image: linear-gradient(to bottom, transparent calc(var(--wet) * 160% - 60%), #000 calc(var(--wet) * 160% - 30%), rgba(0, 0, 0, 0.35) calc(var(--wet) * 160% - 12%), transparent calc(var(--wet) * 160%));
-          mask-image: linear-gradient(to bottom, transparent calc(var(--wet) * 160% - 60%), #000 calc(var(--wet) * 160% - 30%), rgba(0, 0, 0, 0.35) calc(var(--wet) * 160% - 12%), transparent calc(var(--wet) * 160%));
+  visibility: hidden;
 }
-/* The drops of water falling off the letters (home.js makes them; each one
-   that lands makes a ripple) */
-.drip {
-  position: fixed;
-  z-index: 1;
-  width: 7px;
-  height: 9px;
-  margin: -4px 0 0 -3.5px;
-  border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
-  background: rgba(240, 230, 212, 0.85);
-  pointer-events: none;
-}
+.hero__wet.is-on { visibility: visible; }
+.hero__film { color: rgba(59, 0, 8, 0.62); }
+.hero__front { color: rgba(255, 246, 230, 0.55); }
+.hero__spill { color: transparent; fill: none; stroke: rgba(214, 199, 174, 0.22); stroke-width: 0; stroke-linejoin: round; }
 .hero__shadow {
   position: absolute;
   left: 0;

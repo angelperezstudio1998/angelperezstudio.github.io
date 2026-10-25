@@ -83,20 +83,20 @@ const DRIP = {
   textTime: 1200,  // how long the menu and other text take to flow in (ms)
 };
 
-// Page load: the logo rises out of the water. It starts under the surface
-// (low, blurred, dim and wavering), comes up into place piece by piece, water
-// slides off it, and drops falling from the letters make ripples where they land.
+// Page load: the logo rises out of the water, seen from above: it comes up
+// toward you (growing from smaller to its full size) out of the burgundy (it
+// starts the same color as the water and the cream comes up through it), and
+// the water runs off it: a film over the letters recedes from the middle
+// outward, spills over their edges and sends ripples into the water around it.
 const RISE = {
   delay: 300,      // wait after the page loads before it starts rising (ms)
-  time: 1700,      // how long each piece takes to come up (ms)
-  stagger: 500,    // the last piece starts this much after the first (ms)
-  depth: 46,       // how far below its place each piece starts (px)
-  blur: 9,         // how blurred it is under the water (px)
-  under: 0.72,     // how faint it is under the water (0 = fully there, 1 = invisible)
-  waver: 5,        // how much it wavers under the water (px)
-  sheen: 1300,     // how long the water takes to slide off (ms), starting as it surfaces
-  drips: 7,        // how many drops fall off the letters
-  dripFall: 46,    // how far a drop falls before it hits the water (px)
+  time: 1900,      // how long it takes to come up (ms)
+  stagger: 160,    // the right end starts this much after the left (ms)
+  from: 0.8,       // how big it starts (1 = full size): smaller = deeper
+  run: 1500,       // how long the water takes to run off it (ms), starting part way up
+  runAt: 0.35,     // when the water starts running off (share of the rise)
+  spill: 12,       // how far the water spills over the edges (logo units)
+  ripples: 7,      // how many ripples the spilling water makes around it
 };
 
 // Menu jumps (Work / Contact / Scroll / logo / Back to top)
@@ -524,19 +524,22 @@ function dripAt(pc, now) {
   return waterLook(pc, d.x, d.y, (now - d.start) / 1000, d.mode, DRIP, 1, dripLook);
 }
 
-// Rising out of the water (RISE): how submerged this piece still is
+// Rising out of the water (RISE): how submerged this piece still is. It
+// grows toward you around the middle of the logo (so the pieces stay
+// together) and the cream comes up through the burgundy (its opacity).
+let riseMid = null;  // the middle of the logo (page coordinates), measured when the rise starts
 function riseLook(pc, ms, out) {
-  const u = clamp01((ms - pc.order * RISE.stagger) / RISE.time);  // 0 = under, 1 = in place
-  const e = 1 - (1 - u) ** 3;                                     // comes up, slowing as it settles
-  const under = 1 - e;
-  out.amount = RISE.under * under ** 1.5;
-  out.x = Math.sin(ms / 260 + pc.i * 1.9) * RISE.waver * under;   // wavering under the surface
-  out.y = RISE.depth * under + Math.sin(ms / 330 + pc.i) * RISE.waver * 0.6 * under;
-  out.blur = RISE.blur * under ** 1.2;
-  out.size = 1 - 0.04 * under;
+  const u = clamp01((ms - pc.order * RISE.stagger) / RISE.time);  // 0 = deep, 1 = at the surface
+  const e = 1 - (1 - u) ** 3;                                     // comes up, slowing as it surfaces
+  const k = RISE.from + (1 - RISE.from) * e;                      // its size
+  out.amount = (1 - e) ** 1.6;
+  out.x = riseMid ? (pc.cx - riseMid.x) * (k - 1) : 0;
+  out.y = riseMid ? (pc.cy - riseMid.y) * (k - 1) : 0;
+  out.blur = 0;
+  out.size = k;
   return out;
 }
-const riseEnd = () => RISE.stagger + RISE.time;  // (ms)
+const riseEnd = () => RISE.stagger + RISE.time;  // (ms)const riseEnd = () => RISE.stagger + RISE.time;  // (ms)
 
 // Start a drop on the logo at (x, y) on screen
 function startDrip(mode, x, y, start = performance.now()) {
@@ -842,52 +845,48 @@ function startIntro() {
   if (!isPhone) introPieces().forEach((pc) => { pc.click = 1; pc.clickIn = true; pc.clickWater = null; renderPiece(pc); });
   // The logo rises out of the water
   const start = performance.now() + RISE.delay;
+  const xs = heroLogoPieces.map((pc) => pc.cx), ys = heroLogoPieces.map((pc) => pc.cy);
+  riseMid = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
   hero.drip = { mode: 'rise', x: 0, y: 0, start, reach: 0, done: false, intro: true };
   wakeHero();
   startWet(start);
 }
 
-// The water sliding off the rising logo (the sheen running down over it) and
-// the drops falling off the letters, each making a ripple where it lands
+// The water running off the rising logo (RISE): the film recedes from the
+// middle outward (its edge lit), the water spills over the letters' edges,
+// and ripples spread from around the logo as it pours off
 const heroWet = heroLogo.querySelector('.hero__wet');
+const wetDry = heroWet.querySelector('#wet-dry');
+const wetFront = heroWet.querySelector('#wet-front');
+const wetSpill = heroWet.querySelector('.hero__spill');
 function startWet(start) {
-  const sheenAt = start + RISE.time * 0.45;  // as the letters break the surface
+  const runFrom = start + RISE.time * RISE.runAt;
+  const far = 430;  // (logo units: from the middle to past the far ends)
+  heroWet.classList.add('is-on');
   const step = (now) => {
-    const u = clamp01((now - sheenAt) / RISE.sheen);
-    heroWet.style.setProperty('--wet', u.toFixed(3));
-    heroWet.style.opacity = String(round2(u <= 0 ? 0 : 0.75 * Math.min(1, u * 4) * (1 - u ** 3)));
-    if (u < 1) requestAnimationFrame(step);
-    else heroWet.style.opacity = '0';
+    const u = clamp01((now - runFrom) / RISE.run);  // 0 = covered, 1 = all run off
+    const r = (far * (1 - (1 - u) ** 2)).toFixed(1);
+    wetDry.setAttribute('r', r);
+    wetFront.setAttribute('r', r);
+    heroWet.querySelector('.hero__film').style.opacity = String(round2(1 - u ** 3));
+    heroWet.querySelector('.hero__front').style.opacity = String(round2(u <= 0 ? 0 : Math.min(1, u * 6) * (1 - u ** 2)));
+    // the spill: an outline that spreads out over the edges as the water pours off, then fades
+    const sp = clamp01((now - runFrom) / (RISE.run * 1.2));
+    wetSpill.style.strokeWidth = String(round2(RISE.spill * Math.sin(Math.PI * Math.min(1, sp * 1.2)) ** 0.7));
+    wetSpill.style.opacity = String(round2(sp <= 0 ? 0 : 1 - sp ** 1.5));
+    if (u < 1 || sp < 1) requestAnimationFrame(step);
+    else heroWet.classList.remove('is-on');
   };
   requestAnimationFrame(step);
-  // The drops: from the bottoms of different pieces, as each one settles
-  const pieces = [...heroLogoPieces].sort(() => Math.random() - 0.5).slice(0, RISE.drips);
-  pieces.forEach((pc, k) => {
-    const at = pc.order * RISE.stagger + RISE.time * (0.62 + 0.3 * Math.random()) + k * 60;
-    setTimeout(() => fallingDrop(pc), Math.max(0, start - performance.now()) + at);
-  });
-}
-function fallingDrop(pc) {
-  if (hero.progress > 0.2) return;  // (already scrolling away)
-  const r = pc.el.getBoundingClientRect();
-  if (!r.width) return;
-  const x = r.left + r.width * (0.25 + 0.5 * Math.random());
-  const y = r.bottom - 2;
-  const el = document.createElement('div');
-  el.className = 'drip';
-  el.style.left = `${x}px`;
-  el.style.top = `${y}px`;
-  heroScene.append(el);
-  const hang = 260 + Math.random() * 220, fall = 380;
-  // It gathers at the edge, lets go, falls faster and faster, and is gone as it hits the water
-  el.animate([
-    { transform: 'translateY(0) scale(0.2, 0.2)', opacity: 0.4 },
-    { transform: 'translateY(1px) scale(0.9, 1.1)', opacity: 0.9, offset: hang / (hang + fall) },
-    { transform: `translateY(${RISE.dripFall}px) scale(0.75, 1.35)`, opacity: 0.9, easing: 'cubic-bezier(.55, 0, 1, .45)' },
-  ], { duration: hang + fall, easing: 'linear' }).onfinish = () => {
-    el.remove();
-    background.addDrop(x, y + RISE.dripFall);  // the ripple where it lands
-  };
+  // ripples from around the logo, where the water pours off its edges
+  const box = heroLogo.querySelector('.logo').getBoundingClientRect();
+  for (let k = 0; k < RISE.ripples; k++) {
+    const a = (k / RISE.ripples) * Math.PI * 2 + 0.4;
+    const x = box.left + box.width / 2 + Math.cos(a) * box.width * 0.5;
+    const y = box.top + box.height / 2 + Math.sin(a) * box.height * 0.55;
+    const at = runFrom + RISE.run * (0.35 + 0.4 * (k / RISE.ripples)) + Math.random() * 120;
+    setTimeout(() => { if (hero.progress < 0.2) background.addDrop(x, y); }, Math.max(0, at - performance.now()));
+  }
 }
 
 function startIntroText(now, pieces = introPieces()) {
