@@ -446,8 +446,7 @@ ul { padding: 0; list-style: none; }
    on short, wide screens to fit (the logo is 2.5× as wide as it is tall) */
 .hero__logo .logo { width: min(78vw, 920px, 150vh); height: auto; }
 /* The logo casts a soft shadow down onto the background (.hero__shadow, a
-   live copy of the logo; home.js makes it wobble on the water when a ripple
-   passes). --shadow-drop: how far below the logo it falls. */
+   live copy of the logo). --shadow-drop: how far below the logo it falls. */
 .hero__logo { position: relative; isolation: isolate; --shadow-drop: 9%; }
 .hero__shadow {
   position: absolute;
@@ -462,9 +461,8 @@ ul { padding: 0; list-style: none; }
   opacity: 0.6;
   transform: translateY(var(--shadow-drop)) scale(1.04);
   transform-origin: 50% 0;
-  filter: blur(4px);             /* calm: just soft (home.js switches to the water filter while a ripple passes) */
+  filter: blur(4px);
 }
-.hero__shadow.is-wet { filter: url(#shadow-water); }
 
 .hero__corner {
   position: absolute;
