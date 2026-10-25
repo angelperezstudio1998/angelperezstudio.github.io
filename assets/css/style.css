@@ -652,7 +652,7 @@ ul { padding: 0; list-style: none; }
    on the left (title, quick line, images); its paragraphs are on the right,
    each fading in as it scrolls toward the middle and out as it leaves (home.js). To see the category's other projects without going
    back: arrows either side (or the ← → keys) step to the previous / next,
-   and a strip along the bottom jumps to any of them. home.js fills it in
+   and a list of their names down the left jumps to any of them. home.js fills it in
    and opens it; the ×, Esc or the browser's back button close it (it fades
    out). */
 :root { --project-color: #3B0008; }  /* burgundy, until a project sets its own (home.js) */
@@ -669,7 +669,7 @@ ul { padding: 0; list-style: none; }
   background: color-mix(in srgb, var(--project-color) 94%, transparent);
   color: var(--cream);
   overflow: hidden;
-  --strip: 190px;              /* the strip of projects along the bottom */
+  --list: clamp(150px, 14vw, 220px);  /* the list of the category's projects on the left */
   --fade-time: 0.45s;          /* how long it takes to fade in and out (= POPUP_FADE_MS in home.js) */
   opacity: 0;
   transition: opacity var(--fade-time) ease;
@@ -693,7 +693,7 @@ html.is-locked { overflow: hidden; background: var(--project-color); }
 
 /* What scrolls is the project's content (fading out softly at the top and
    bottom as it scrolls): the project on the left, its paragraphs on the right */
-.project__view { position: absolute; inset: 0 0 var(--strip); }
+.project__view { position: absolute; inset: 0 0 0 var(--list); }
 .project__inner {
   height: 100%;
   --side: clamp(72px, 9vw, 140px);  /* (clear of the arrows) */
@@ -735,7 +735,7 @@ html.is-locked { overflow: hidden; background: var(--project-color); }
 /* Previous / next: arrows either side of the project */
 .project__step {
   position: absolute;
-  top: calc(50% - var(--strip) / 2);
+  top: 50%;
   z-index: 2;
   width: 48px;
   height: 48px;
@@ -749,74 +749,52 @@ html.is-locked { overflow: hidden; background: var(--project-color); }
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
-.project__step--prev { left: var(--gutter); }
+.project__step--prev { left: calc(var(--list) + 12px); }
 .project__step--next { right: var(--gutter); }
 .project__step:hover,
 .project__step:focus-visible { background: rgba(214, 199, 174, 0.22); }
 .project__step:focus { outline: none; }
 .project__step[hidden] { display: none; }
 
-/* The category's projects: a strip along the bottom you scroll sideways;
-   the one you're looking at is marked */
+/* The category's projects: their names down the left, clickable; the one
+   you're looking at is marked. It scrolls up and down if there are many. */
 .project__list {
   position: absolute;
-  left: 0;
-  right: 0;
+  top: 0;
   bottom: 0;
+  left: 0;
   z-index: 1;
-  height: var(--strip);
+  width: var(--list);
   display: flex;
+  flex-direction: column;
   justify-content: safe center;
-  gap: 22px;
-  padding: 30px var(--gutter) 18px;   /* (room above for a hovered one to grow) */
-  overflow-x: auto;
-  overflow-y: hidden;
+  gap: 4px;
+  padding: 96px 16px 96px var(--gutter);
+  overflow-y: auto;
   overscroll-behavior: contain;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--gutter), #000 calc(100% - var(--gutter)), transparent);
-          mask-image: linear-gradient(to right, transparent, #000 var(--gutter), #000 calc(100% - var(--gutter)), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 72px, #000 calc(100% - 72px), transparent);
+          mask-image: linear-gradient(to bottom, transparent, #000 72px, #000 calc(100% - 72px), transparent);
 }
 .project__list:focus { outline: none; }  /* (it can get the focus because it scrolls; no box drawn around it) */
 .project__item {
   flex: none;
-  display: grid;
-  grid-template-rows: 1fr auto;
-  gap: 6px;
-  height: 100%;
-  padding: 0;
+  padding: 6px 0;
   border: 0;
   background: none;
   color: var(--cream);
   font: inherit;
+  font-size: 15px;
   text-align: left;
   cursor: pointer;
-  opacity: 0.5;
-  transform-origin: 50% 100%;   /* (grows upward) */
-  transition: opacity 0.3s ease, transform 0.35s cubic-bezier(.2, .7, .2, 1);
+  opacity: 0.45;
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(.2, .7, .2, 1);
 }
 .project__item:hover,
 .project__item:focus-visible,
 .project__item[aria-current="true"] { opacity: 1; }
 .project__item:hover,
-.project__item:focus-visible { transform: scale(1.14); }
+.project__item:focus-visible { transform: translateX(6px); }
 .project__item:focus { outline: none; }
-.project__thumb {              /* soft-edged like the cards: fades to transparent all around */
-  display: block;
-  height: 100%;
-  aspect-ratio: var(--ratio, 0.8);
-  background: rgba(214, 199, 174, 0.14);  /* (placeholder) */
-  --soft: 18%;
-  -webkit-mask-image:
-    linear-gradient(to right, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
-    linear-gradient(to bottom, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent);
-  -webkit-mask-composite: source-in;
-          mask-image:
-    linear-gradient(to right, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
-    linear-gradient(to bottom, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent);
-          mask-composite: intersect;
-}
-.project__thumb:has(img) { background: none; }
-.project__thumb img { width: 100%; height: 100%; object-fit: cover; }
-.project__item-name { font-size: 13px; font-weight: 500; }
 
 .project__close {
   position: absolute;
@@ -1102,12 +1080,29 @@ html.is-locked { overflow: hidden; background: var(--project-color); }
   .project__pair { grid-template-columns: 1fr; }
   /* Phones, the project view: no side arrows (swipe the strip instead),
      less padding */
-  .project { --strip: 150px; }
+  .project { --list: 0px; --strip: 56px; }
+  .project__view { bottom: var(--strip); }
   .project__inner { --side: 20px; grid-template-columns: minmax(0, 1fr); gap: 0; padding-top: 72px; padding-bottom: 40px; }
   .project__about { display: none; }  /* (phones: the paragraphs stay between the images, home.js) */
   .project__body p { line-height: 1.6; }
   .project__step { display: none; }
-  .project__list { justify-content: flex-start; padding-inline: 20px; scrollbar-width: none; }
+  .project__list {          /* (phones: the names in a row along the bottom you swipe) */
+    top: auto;
+    right: 0;
+    width: auto;
+    height: var(--strip);
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 22px;
+    padding: 0 20px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+            mask-image: linear-gradient(to right, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+  }
+  .project__item:hover { transform: none; }
   .project__list::-webkit-scrollbar { display: none; }
   .project__close { top: 14px; right: 14px; }
   .work-cards--branding,
@@ -1160,6 +1155,6 @@ html.is-locked { overflow: hidden; background: var(--project-color); }
   .project,
   .project::backdrop { transition: opacity var(--fade-time) ease !important; }
   .project__inner { transition: opacity 0.25s ease !important; }
-  .project__item { transition: opacity 0.3s ease, transform 0.35s cubic-bezier(.2, .7, .2, 1) !important; }
+  .project__item { transition: opacity 0.3s ease, transform 0.3s cubic-bezier(.2, .7, .2, 1) !important; }
   .line.has-cut.is-cut { transition: --hole 0.35s ease 0.1s, --cut-l 0.35s cubic-bezier(.2, .7, .2, 1), --cut-r 0.35s cubic-bezier(.2, .7, .2, 1) !important; }
 }

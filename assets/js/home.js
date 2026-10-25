@@ -272,8 +272,8 @@ if (smallScreen) {
 // ---- The project view: clicking a card opens its project page ----
 // Almost like a page of its own: it fades in over the whole screen with the
 // project centered (style.css, "The project view"). The arrows (or the ← →
-// keys) step to the previous / next project of its category and the strip
-// along the bottom jumps to any of them, so you never have to go back first. Filled in from the cards: their row, name and quick line, and
+// keys) step to the previous / next project of its category and the list of
+// their names on the left jumps to any of them, so you never have to go back first. Filled in from the cards: their row, name and quick line, and
 // their page (a <template class="work-card__page"> after the card's button;
 // without one, a placeholder).
 // Each project has its own address (?p=poster-01: the name in lowercase with
@@ -331,28 +331,19 @@ function fillProject(card) {
   fadeParagraphs();
   if (popupList.dataset.list !== list.className) {  // (a different category: build its column)
     popupList.dataset.list = list.className;
-    const ratio = getComputedStyle(list).getPropertyValue('--ratio');
-    popupList.replaceChildren(...[...list.children].map((other, k) => {
+    popupList.replaceChildren(...[...list.children].map((other) => {
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'project__item';
+      item.textContent = other.querySelector('.work-card__name').textContent;
       item.card = other;
-      const thumb = document.createElement('span');
-      thumb.className = 'project__thumb';
-      thumb.style.setProperty('--ratio', ratio);
-      const img = other.querySelector('.work-card__open > img');
-      if (img) thumb.append(Object.assign(img.cloneNode(), { alt: '' }));
-      const label = document.createElement('span');
-      label.className = 'project__item-name';
-      label.textContent = other.querySelector('.work-card__name').textContent;
-      item.append(thumb, label);
       item.addEventListener('click', () => switchProject(other));
       return item;
     }));
   }
   popupList.querySelectorAll('.project__item').forEach((item) => {
     item.setAttribute('aria-current', String(item.card === card));
-    if (item.card === card) item.scrollIntoView({ block: 'nearest', inline: 'nearest' });  // (keep it in view in the strip)
+    if (item.card === card) item.scrollIntoView({ block: 'nearest', inline: 'nearest' });  // (keep it in view in the list)
   });
   // Its color (data-color on the card, e.g. data-color="#1d3557"; burgundy without one)
   if (card.dataset.color) root.style.setProperty('--project-color', card.dataset.color);

@@ -1580,6 +1580,9 @@ document.addEventListener('click', (e) => {
   const link = e.target.closest('a');
   if (!link) return;
   const href = link.getAttribute('href') || '';
+  // Links that open something on the page itself (data-no-drop, like the
+  // work rows, whose cards do the opening): no dissolve, nothing to follow
+  if (link.hasAttribute('data-no-drop')) { if (href === '#') e.preventDefault(); return; }
 
   // Where the drop lands: where you clicked, or the link's middle when it was
   // opened with the keyboard (Enter)
