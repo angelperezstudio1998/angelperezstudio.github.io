@@ -441,8 +441,8 @@ ul { padding: 0; list-style: none; }
 }
 
 /* Projects floating on the water around the logo (home.js moves them: they
-   drift, bob and get pushed along by the ripples). Behind the logo, soft-
-   edged like the cards; hovering one brings up its name. They fade in once
+   drift, bob and get pushed along by the ripples). Behind the logo, like the
+   cards; hovering one brings up its name. They fade in once
    the intro is done (.is-ready) and fade with the scene as you scroll. */
 .floaters {
   position: absolute;
@@ -472,21 +472,13 @@ ul { padding: 0; list-style: none; }
   will-change: transform;
 }
 .floater:focus { outline: none; }
-.floater__img {                    /* the image (or a placeholder tint), fading to transparent all around */
+.floater__img {                    /* the image (or a placeholder tint), with slightly rounded corners */
   grid-area: 1 / 1;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 6px;
   background: rgba(214, 199, 174, 0.12);
-  --soft: 20%;
-  -webkit-mask-image:
-    linear-gradient(to right, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
-    linear-gradient(to bottom, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent);
-  -webkit-mask-composite: source-in;
-          mask-image:
-    linear-gradient(to right, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
-    linear-gradient(to bottom, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent);
-          mask-composite: intersect;
   transition: transform 0.4s cubic-bezier(.2, .7, .2, 1);
 }
 img.floater__img { background: none; }
@@ -668,23 +660,14 @@ img.floater__img { background: none; }
   cursor: pointer;
 }
 .work-card__open:focus { outline: none; }  /* (keyboard focus shows as the card growing, with its quick line) */
-/* The image (or, for now, a placeholder tint) has no hard edges: it fades to
-   transparent all around (--soft: how much of each side fades) */
+/* The image (or, for now, a placeholder tint), with slightly rounded corners */
 .work-card__open::before,
 .work-card__open > img {
   grid-area: 1 / 1;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  --soft: 22%;
-  -webkit-mask-image:
-    linear-gradient(to right, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
-    linear-gradient(to bottom, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent);
-  -webkit-mask-composite: source-in;
-          mask-image:
-    linear-gradient(to right, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent),
-    linear-gradient(to bottom, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent);
-          mask-composite: intersect;
+  border-radius: 6px;
 }
 .work-card__open::before { content: ""; background: rgba(59, 0, 8, 0.1); }  /* (placeholder) */
 .work-card__open:has(img)::before { content: none; }
