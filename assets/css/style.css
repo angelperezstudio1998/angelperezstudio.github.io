@@ -445,6 +445,17 @@ ul { padding: 0; list-style: none; }
 /* Width of the big logo: 78% of the screen, at most 920px, and small enough
    on short, wide screens to fit (the logo is 2.5× as wide as it is tall) */
 .hero__logo .logo { width: min(78vw, 920px, 150vh); height: auto; }
+/* The big logo looks raised from the background, as if lit from the top
+   left: a thin light edge where the light catches it, a tight dark edge on
+   the far side (its thickness), and a soft shadow it casts on the page.
+   Lighter mode leaves it flat (it redraws whenever the pieces move). */
+.hero__logo .logo {
+  filter:
+    drop-shadow(-1px -1px 0 rgba(255, 246, 228, 0.35))
+    drop-shadow(1.5px 2px 0 rgba(20, 0, 3, 0.55))
+    drop-shadow(4px 10px 14px rgba(15, 0, 2, 0.45));
+}
+.is-lite .hero__logo .logo { filter: none; }
 
 .hero__corner {
   position: absolute;

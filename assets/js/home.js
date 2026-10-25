@@ -84,15 +84,6 @@ const DRIP = {
   textTime: 1200,  // how long the menu and other text take to flow in (ms)
 };
 
-// The big logo's grain: a fine speckled texture, like grainy print. Tiny
-// specks of the logo let the background show through (a noise texture used
-// as a mask over the logo; the letters move under it like over paper).
-const LOGO_GRAIN = {
-  amount: 0.7,     // how see-through the strongest specks are (0 = no grain, 1 = fully)
-  spread: 3.2,     // how rare the strong specks are (higher = fewer, finer grain)
-  size: 1,         // grain size (screen pixels per speck, up to 2 on sharp screens)
-};
-
 // Menu jumps (Work / Contact / Scroll / logo / Back to top)
 const NAV = {
   msPerScreen: 600, // travel time per screen-height of scrolling. Bigger = slower
@@ -143,23 +134,6 @@ const heroLogo = document.querySelector('.hero__logo');
 const scenePieces = windPieces;  // (core.js)
 
 const heroLogoPieces = logoPieces(heroLogo, { tilt: 60, blur: 8 });
-
-// The grain (LOGO_GRAIN): one small tile of random specks, repeated
-if (LOGO_GRAIN.amount > 0) {
-  const n = 160;
-  const tile = document.createElement('canvas');
-  tile.width = tile.height = n;
-  const tc = tile.getContext('2d');
-  const img = tc.createImageData(n, n);
-  for (let p = 0; p < img.data.length; p += 4) {
-    img.data[p + 3] = Math.round(255 * (1 - LOGO_GRAIN.amount * Math.random() ** LOGO_GRAIN.spread));  // mostly solid, some specks
-  }
-  tc.putImageData(img, 0, 0);
-  const mask = heroLogo.querySelector('.logo').style;
-  mask.webkitMaskImage = mask.maskImage = `url(${tile.toDataURL()})`;
-  // (on sharp screens, like phones, each speck is made smaller so the grain stays fine)
-  mask.webkitMaskSize = mask.maskSize = `${(n * LOGO_GRAIN.size) / Math.min(window.devicePixelRatio || 1, 2)}px`;
-}
 const heroTextPieces = scenePieces(heroScene);
 const workPieces = scenePieces(workScene);
 const contactPieces = scenePieces(contactScene);
