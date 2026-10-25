@@ -540,6 +540,112 @@ function checkDrip(now) {
   }
 }
 
+// ---- Projects floating on the water ----
+// The first project of each category floats around the logo: it drifts
+// slowly, bobs and turns, and bumps softly off the edges, the logo and the
+// others. When a ripple reaches one, it's pushed along the wave (away from
+// where the drop fell), then slows back to a drift. Clicking one opens its
+// project. FLOAT: how they move.
+const FLOAT = {
+  drift: 9,        // their calm speed (px per second)
+  wander: 0.35,    // how much they change direction on their own
+  bob: 3,          // how far they bob up and down (px)
+  tilt: 3,         // how much they turn back and forth (degrees)
+  push: 170,       // how hard the closest ripples push them (px per second)
+  reach: 560,      // how far from a drop they still feel it (px)
+  calm: 1.1,       // how quickly a push dies down (higher = sooner)
+  showAfter: 2600, // after the page opens, wait this long before they fade in (ms)
+};
+const floatBox = heroScene.querySelector('.floaters');
+const floaters = workRows.map((li, k) => {
+  const card = li.querySelector('.work-card');
+  const name = card.querySelector('.work-card__name').textContent;
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = 'floater';
+  el.setAttribute('aria-label', `${name} (${li.querySelector('.work-item__title').textContent})`);
+  el.style.setProperty('--ratio', getComputedStyle(li.querySelector('.work-cards')).getPropertyValue('--ratio'));
+  const img = card.querySelector('.work-card__open > img');
+  const pic = img ? Object.assign(img.cloneNode(), { alt: '' }) : document.createElement('span');
+  pic.classList.add('floater__img');
+  const label = Object.assign(document.createElement('span'), { className: 'floater__name', textContent: name });
+  el.append(pic, label);
+  el.addEventListener('click', (e) => openProject(card, { byPointer: e.detail > 0 }));
+  floatBox.append(el);
+  // where it starts (share of the scene: around the logo) and its own rhythm
+  const home = [[0.17, 0.3], [0.83, 0.42], [0.25, 0.76]][k % 3];
+  return { el, card, hx: home[0], hy: home[1], x: 0, y: 0, w: 0, h: 0, dir: k * 2.1 + 0.6, vx: 0, vy: 0, seed: k * 1.7, pushes: [], placed: false };
+});
+
+// Where things are (scene coordinates): the scene, the logo, each floater's size
+let floatScene = null, floatLogo = null;
+function measureFloaters() {
+  floatScene = heroScene.getBoundingClientRect();
+  const r = heroLogo.querySelector('.logo').getBoundingClientRect();
+  floatLogo = { l: r.left - floatScene.left, r: r.right - floatScene.left, t: r.top - floatScene.top, b: r.bottom - floatScene.top };
+  floaters.forEach((f) => {
+    f.w = f.el.offsetWidth;
+    f.h = f.el.offsetHeight;
+    if (!f.placed) { f.x = f.hx * floatScene.width; f.y = f.hy * floatScene.height; f.placed = true; }
+  });
+}
+
+// A ripple starts at (x, y) on screen: each floater it can reach gets a push
+// along the wave, timed for when the wave gets there
+Site.onRipple.push((x, y, start) => {
+  if (!floatScene) return;
+  const sx = x - floatScene.left, sy = y - floatScene.top;
+  floaters.forEach((f) => {
+    const dx = f.x - sx, dy = f.y - sy;
+    const d = Math.hypot(dx, dy) || 1;
+    if (d > FLOAT.reach) return;
+    const k = FLOAT.push * (1 - d / FLOAT.reach) ** 1.4;
+    f.pushes.push({ at: start + (d / RIPPLE.speed) * 1000, vx: (dx / d) * k, vy: (dy / d) * k });
+  });
+});
+
+let floatLast = 0;
+function floatFrame(now) {
+  requestAnimationFrame(floatFrame);
+  const dt = Math.min(0.05, (now - (floatLast || now)) / 1000);
+  floatLast = now;
+  if (!floatScene || heroScene.lastVisibility === 'hidden' || projectPopup.open || document.hidden) return;
+  const W = floatScene.width, H = floatScene.height, t = now / 1000;
+  floaters.forEach((f) => {
+    // pushes from ripples, once the wave arrives
+    f.pushes = f.pushes.filter((p) => { if (now < p.at) return true; f.vx += p.vx; f.vy += p.vy; return false; });
+    // its own slow wandering drift
+    f.dir += Math.sin(t * 0.3 + f.seed) * FLOAT.wander * dt;
+    let ax = Math.cos(f.dir) * FLOAT.drift, ay = Math.sin(f.dir) * FLOAT.drift;
+    // keep clear of the logo (gently) and of each other
+    const lx = Math.max(floatLogo.l, Math.min(f.x, floatLogo.r)), ly = Math.max(floatLogo.t, Math.min(f.y, floatLogo.b));
+    const ld = Math.hypot(f.x - lx, f.y - ly), room = Math.max(f.w, f.h) * 0.45;
+    if (ld < room) { const k = (1 - ld / room) * 60; ax += ((f.x - (floatLogo.l + floatLogo.r) / 2) > 0 ? 1 : -1) * k; ay += ((f.y - (floatLogo.t + floatLogo.b) / 2) > 0 ? 1 : -1) * k * 0.6; }
+    floaters.forEach((o) => {
+      if (o === f) return;
+      const dx = f.x - o.x, dy = f.y - o.y, d = Math.hypot(dx, dy) || 1, min = (f.w + o.w) / 2 + 30;
+      if (d < min) { ax += (dx / d) * (1 - d / min) * 80; ay += (dy / d) * (1 - d / min) * 80; }
+    });
+    // the push dies down; the drift remains
+    const calm = Math.exp(-FLOAT.calm * dt);
+    f.vx *= calm; f.vy *= calm;
+    f.x += (ax + f.vx) * dt;
+    f.y += (ay + f.vy) * dt;
+    // bump softly off the edges (turning back the way it came)
+    const mx = f.w / 2 + 12, my = f.h / 2 + 12;
+    if (f.x < mx || f.x > W - mx) { f.x = Math.max(mx, Math.min(W - mx, f.x)); f.vx *= -0.5; f.dir = Math.PI - f.dir; }
+    if (f.y < my + 60 || f.y > H - my - 60) { f.y = Math.max(my + 60, Math.min(H - my - 60, f.y)); f.vy *= -0.5; f.dir = -f.dir; }
+    // draw: bobbing and turning a little
+    const bob = Math.sin(t * 0.9 + f.seed) * FLOAT.bob;
+    const turn = Math.sin(t * 0.45 + f.seed * 2) * FLOAT.tilt + f.vx * 0.02;
+    f.el.style.transform = `translate(${(f.x - f.w / 2).toFixed(1)}px, ${(f.y - f.h / 2 + bob).toFixed(1)}px) rotate(${turn.toFixed(2)}deg)`;
+  });
+}
+Site.onMeasure.push(measureFloaters);
+window.addEventListener('scroll', () => { if (isPhone) floatScene = heroScene.getBoundingClientRect(); }, { passive: true });  // (phones: the scene scrolls)
+requestAnimationFrame(floatFrame);
+setTimeout(() => floatBox.classList.add('is-ready'), location.hash ? 0 : (reduceMotion ? 300 : FLOAT.showAfter));
+
 // ---- Drop trails: a soft blur on the side each drop is moving toward ----
 // Each drop gets a tiny SVG filter: a blurred, shifted, faint copy of itself
 // behind the sharp drop. Only the shift and softness change each frame.

@@ -56,9 +56,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 
   <!-- ?v=… makes browsers fetch fresh files after each update (change it every time you publish) -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261025j">
-  <script src="assets/js/core.js?v=20261025j" defer></script>
-  <script src="assets/js/home.js?v=20261025j" defer></script>
+  <link rel="stylesheet" href="assets/css/style.css?v=20261025k">
+  <script src="assets/js/core.js?v=20261025k" defer></script>
+  <script src="assets/js/home.js?v=20261025k" defer></script>
 </head>
 <body>
 
@@ -116,6 +116,9 @@
     <!-- Scene 1: logo + corner labels -->
     <section class="scene scene--hero" aria-label="Intro" tabindex="-1">
       <h1 class="sr-only">Angel Studio, graphic designer</h1>
+      <!-- The first project of each category, floating on the water around the
+           logo (home.js builds them from the first card of each work row) -->
+      <div class="floaters" aria-label="Featured projects"></div>
       <div class="hero__logo" role="link" tabindex="0" aria-label="Angel Studio: see the work">
         <!-- Its shadow, cast on the background: a live copy of the logo below
              (<use>), so it moves with every piece -->

@@ -651,6 +651,7 @@ const Site = {
   onHoverFrame: [],       // extra per-frame hover work; return true while still moving
   onPointer: [],          // the mouse moved or the screen was tapped
   onTap: [],              // touchscreens: a tap (not a swipe) ended, with its pointer event
+  onRipple: [],           // a ripple starts: fn(x, y, start) (screen coordinates, start time in ms)
   onLite: [],             // lighter mode was switched on or off
   jump: null,             // (hash) → true if this page handles a link to that #scene itself
   isGliding: () => false, // is an in-page jump still moving? (links stay dissolved until it stops)
@@ -1421,6 +1422,7 @@ const background = (() => {
     lastDrop = now;
     ripples.push({ x, y, start: now });
     if (ripples.length > (perf.lite ? QUALITY.liteRipples : RIPPLE.max)) ripples.shift();  // drop the oldest if there are too many
+    Site.onRipple.forEach((fn) => fn(x, y, now));
     wake();
   }
 
@@ -1458,6 +1460,7 @@ const background = (() => {
     // Start a ripple at (x, y), optionally later (start = a future time)
     addDrop(x, y, start = performance.now()) {
       ripples.push({ x, y, start });
+      Site.onRipple.forEach((fn) => fn(x, y, start));
       if (ripples.length > (perf.lite ? QUALITY.liteRipples : RIPPLE.max)) ripples.shift();
       wake();
     },
