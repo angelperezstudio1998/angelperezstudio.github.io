@@ -55,9 +55,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 
   <!-- ?v=… makes browsers fetch fresh files after each update (change it every time you publish) -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261025c">
-  <script src="assets/js/core.js?v=20261025c" defer></script>
-  <script src="assets/js/home.js?v=20261025c" defer></script>
+  <link rel="stylesheet" href="assets/css/style.css?v=20261025d">
+  <script src="assets/js/core.js?v=20261025d" defer></script>
+  <script src="assets/js/home.js?v=20261025d" defer></script>
 </head>
 <body>
 
@@ -165,18 +165,24 @@
                image inside its button (<img src="…" alt="">) and write its name and
                quick line. The project view's content goes in a
                <template class="work-card__page"> right after the button (see the
-               first poster); without one, it shows a placeholder. -->
+               first poster: images go on the left, paragraphs on the right);
+               without one, it shows placeholders. -->
           <ul class="work-cards work-cards--posters" aria-label="Posters projects">
             <li class="work-card">
               <button class="work-card__open ph" type="button"><span class="work-card__desc"><span class="work-card__name">Poster 01</span> A quick line about the project</span></button>
-              <!-- This project's page (shown in the popup) -->
+              <!-- This project's page (shown in the project view): the images
+                   go on the left, the paragraphs (<p>) on the right, in the
+                   order written -->
               <template class="work-card__page">
                 <div class="ph project__image"><span class="label">Main image</span></div>
-                <p>A few sentences about the project: the brief, the idea and how it was made.</p>
+                <p>The brief: who it was for and what they needed.</p>
                 <div class="project__pair">
                   <div class="ph project__image"><span class="label">Detail</span></div>
                   <div class="ph project__image"><span class="label">Detail</span></div>
                 </div>
+                <p>The idea: where it started and why it looks the way it does.</p>
+                <div class="ph project__image"><span class="label">Image</span></div>
+                <p>How it was made: tools, process, and what came out of it.</p>
               </template>
             </li>
             <li class="work-card"><button class="work-card__open ph" type="button"><span class="work-card__desc"><span class="work-card__name">Poster 02</span> A quick line about the project</span></button></li>
@@ -265,10 +271,13 @@
     <nav class="project__list" aria-label="More projects"></nav>
     <div class="project__view">
       <div class="project__inner">
-        <p class="label project__kind"></p>
-        <h2 class="project__title" id="project-title"></h2>
-        <p class="project__lead"></p>
-        <div class="project__body"></div>
+        <div class="project__main">
+          <p class="label project__kind"></p>
+          <h2 class="project__title" id="project-title"></h2>
+          <p class="project__lead"></p>
+          <div class="project__body"></div>
+        </div>
+        <div class="project__about"></div>
       </div>
     </div>
     <button class="project__close" type="button" aria-label="Close">×</button>

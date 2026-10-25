@@ -648,8 +648,9 @@ ul { padding: 0; list-style: none; }
 
 /* The project view (a card's project page, almost like a page of its own).
    It fades in over the whole screen in the project's color (--project-color:
-   burgundy for now; a card can set its own with data-color), with the
-   project centered. To see the category's other projects without going
+   burgundy for now; a card can set its own with data-color). The project is
+   on the left (title, quick line, images); its paragraphs are on the right,
+   each fading in as it scrolls toward the middle and out as it leaves (home.js). To see the category's other projects without going
    back: arrows either side (or the ← → keys) step to the previous / next,
    and a strip along the bottom jumps to any of them. home.js fills it in
    and opens it; the ×, Esc or the browser's back button close it (it fades
@@ -668,7 +669,7 @@ ul { padding: 0; list-style: none; }
   background: color-mix(in srgb, var(--project-color) 94%, transparent);
   color: var(--cream);
   overflow: hidden;
-  --strip: 128px;              /* the strip of projects along the bottom */
+  --strip: 190px;              /* the strip of projects along the bottom */
   --fade-time: 0.45s;          /* how long it takes to fade in and out (= POPUP_FADE_MS in home.js) */
   opacity: 0;
   transition: opacity var(--fade-time) ease;
@@ -690,12 +691,16 @@ ul { padding: 0; list-style: none; }
 html { scrollbar-gutter: stable; }
 html.is-locked { overflow: hidden; background: var(--project-color); }
 
-/* The project, centered; what scrolls is its content (fading out softly at
-   the top and bottom as it scrolls) */
+/* What scrolls is the project's content (fading out softly at the top and
+   bottom as it scrolls): the project on the left, its paragraphs on the right */
 .project__view { position: absolute; inset: 0 0 var(--strip); }
 .project__inner {
   height: 100%;
-  --side: max(clamp(72px, 9vw, 140px), (100% - 920px) / 2);  /* (a centered column, at most 920px wide, clear of the arrows) */
+  --side: clamp(72px, 9vw, 140px);  /* (clear of the arrows) */
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(40px, 6vw, 110px);
   padding: clamp(64px, 10vh, 110px) var(--side) 56px;
   overflow-y: auto;
   overscroll-behavior: contain;  /* scrolling it never scrolls the page behind */
@@ -762,8 +767,8 @@ html.is-locked { overflow: hidden; background: var(--project-color); }
   height: var(--strip);
   display: flex;
   justify-content: safe center;
-  gap: 18px;
-  padding: 12px var(--gutter) 18px;
+  gap: 22px;
+  padding: 30px var(--gutter) 18px;   /* (room above for a hovered one to grow) */
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior: contain;
@@ -785,11 +790,14 @@ html.is-locked { overflow: hidden; background: var(--project-color); }
   text-align: left;
   cursor: pointer;
   opacity: 0.5;
-  transition: opacity 0.3s ease;
+  transform-origin: 50% 100%;   /* (grows upward) */
+  transition: opacity 0.3s ease, transform 0.35s cubic-bezier(.2, .7, .2, 1);
 }
 .project__item:hover,
 .project__item:focus-visible,
 .project__item[aria-current="true"] { opacity: 1; }
+.project__item:hover,
+.project__item:focus-visible { transform: scale(1.14); }
 .project__item:focus { outline: none; }
 .project__thumb {              /* soft-edged like the cards: fades to transparent all around */
   display: block;
@@ -808,7 +816,7 @@ html.is-locked { overflow: hidden; background: var(--project-color); }
 }
 .project__thumb:has(img) { background: none; }
 .project__thumb img { width: 100%; height: 100%; object-fit: cover; }
-.project__item-name { font-size: 12px; font-weight: 500; }
+.project__item-name { font-size: 13px; font-weight: 500; }
 
 .project__close {
   position: absolute;
@@ -842,7 +850,14 @@ html.is-locked { overflow: hidden; background: var(--project-color); }
 }
 .project__lead { max-width: 40em; font-size: 18px; line-height: 1.45; }
 .project__body { display: grid; gap: 20px; margin-top: 32px; }
-.project__body p { max-width: 40em; line-height: 1.6; }
+/* The paragraphs: spaced out down the right side, starting about level with
+   the images, so they come and go one at a time as you scroll */
+.project__about {
+  display: grid;
+  gap: 36vh;
+  padding: 26vh 0 32vh;
+}
+.project__about p { max-width: 34em; font-size: 17px; line-height: 1.65; will-change: opacity; }
 .project__image { aspect-ratio: 3 / 2; border-radius: 12px; }
 .project__image img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .project__pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -1087,8 +1102,10 @@ html.is-locked { overflow: hidden; background: var(--project-color); }
   .project__pair { grid-template-columns: 1fr; }
   /* Phones, the project view: no side arrows (swipe the strip instead),
      less padding */
-  .project { --strip: 120px; }
-  .project__inner { --side: 20px; padding-top: 72px; padding-bottom: 40px; }
+  .project { --strip: 150px; }
+  .project__inner { --side: 20px; grid-template-columns: minmax(0, 1fr); gap: 0; padding-top: 72px; padding-bottom: 40px; }
+  .project__about { display: none; }  /* (phones: the paragraphs stay between the images, home.js) */
+  .project__body p { line-height: 1.6; }
   .project__step { display: none; }
   .project__list { justify-content: flex-start; padding-inline: 20px; scrollbar-width: none; }
   .project__list::-webkit-scrollbar { display: none; }
@@ -1143,6 +1160,6 @@ html.is-locked { overflow: hidden; background: var(--project-color); }
   .project,
   .project::backdrop { transition: opacity var(--fade-time) ease !important; }
   .project__inner { transition: opacity 0.25s ease !important; }
-  .project__item { transition: opacity 0.3s ease !important; }
+  .project__item { transition: opacity 0.3s ease, transform 0.35s cubic-bezier(.2, .7, .2, 1) !important; }
   .line.has-cut.is-cut { transition: --hole 0.35s ease 0.1s, --cut-l 0.35s cubic-bezier(.2, .7, .2, 1), --cut-r 0.35s cubic-bezier(.2, .7, .2, 1) !important; }
 }

@@ -285,6 +285,7 @@ const popupPrev = projectPopup.querySelector('.project__step--prev');
 const popupNext = projectPopup.querySelector('.project__step--next');
 const popupInner = projectPopup.querySelector('.project__inner');
 const popupBody = projectPopup.querySelector('.project__body');
+const popupAbout = projectPopup.querySelector('.project__about');
 const POPUP_CLOSE_MS = 450;  // = --fade-time in style.css
 const POPUP_SWITCH_MS = 250; // = .project__inner's fade in style.css
 let popupCard = null;        // the card whose project is showing
@@ -317,9 +318,17 @@ function fillProject(card) {
   projectPopup.querySelector('.project__kind').textContent = list.getAttribute('aria-label').replace(/ projects$/, '');  // its row ("Posters projects" → Posters)
   projectPopup.querySelector('.project__title').textContent = name;
   projectPopup.querySelector('.project__lead').textContent = card.querySelector('.work-card__desc').textContent.replace(name, '').trim();
-  popupBody.replaceChildren(page ? page.content.cloneNode(true)
-    : Object.assign(document.createElement('div'), { className: 'ph project__image', innerHTML: '<span class="label">Project images</span>' }));
+  // Its page: the paragraphs go on the right, everything else (images) on the left
+  const content = page ? [...page.content.cloneNode(true).children] : [
+    Object.assign(document.createElement('div'), { className: 'ph project__image', innerHTML: '<span class="label">Project images</span>' }),
+    ...['The brief', 'The idea', 'How it was made'].map((t) => Object.assign(document.createElement('p'), { textContent: `${t}: a few sentences about the project.` })),
+  ];
+  // (phones: one column, so everything stays in the order written)
+  const toRight = (el) => !smallScreen && el.tagName === 'P';
+  popupBody.replaceChildren(...content.filter((el) => !toRight(el)));
+  popupAbout.replaceChildren(...content.filter(toRight));
   popupInner.scrollTop = 0;
+  fadeParagraphs();
   if (popupList.dataset.list !== list.className) {  // (a different category: build its column)
     popupList.dataset.list = list.className;
     const ratio = getComputedStyle(list).getPropertyValue('--ratio');
@@ -351,6 +360,23 @@ function fillProject(card) {
   popupCard = card;
 }
 
+// The paragraphs on the right fade with the scroll: fully there around the
+// middle of the view, gone by the time they reach its top or bottom edge
+let fadeQueued = false;
+function fadeParagraphs() {
+  fadeQueued = false;
+  const box = popupInner.getBoundingClientRect();
+  const mid = box.top + box.height / 2, reach = box.height * 0.45;
+  popupAbout.querySelectorAll('p').forEach((p) => {
+    const r = p.getBoundingClientRect();
+    const d = Math.abs(r.top + r.height / 2 - mid);
+    p.style.opacity = String(round2(Math.max(0, Math.min(1, 1.6 - (d / reach) * 1.6))));
+  });
+}
+const queueFade = () => { if (!fadeQueued) { fadeQueued = true; requestAnimationFrame(fadeParagraphs); } };
+popupInner.addEventListener('scroll', queueFade, { passive: true });
+window.addEventListener('resize', () => { if (projectPopup.open) queueFade(); });
+
 // byPointer: opened with the mouse or a tap; push: add a step to the browser's history
 function openProject(card, { byPointer = false, push = true } = {}) {
   clearTimeout(popupClosing);
@@ -369,6 +395,7 @@ function openProject(card, { byPointer = false, push = true } = {}) {
     getComputedStyle(projectPopup).opacity;     // (start from invisible, so it fades in)
   }
   projectPopup.classList.add('is-shown');
+  queueFade();  // (now that it's on screen and can be measured)
 }
 
 // Another project of the same category, from the column: the content fades
