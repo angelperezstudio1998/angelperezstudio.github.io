@@ -445,19 +445,9 @@ ul { padding: 0; list-style: none; }
 /* Width of the big logo: 78% of the screen, at most 920px, and small enough
    on short, wide screens to fit (the logo is 2.5× as wide as it is tall) */
 .hero__logo .logo { width: min(78vw, 920px, 150vh); height: auto; }
-/* A stage light from the top: a soft cone of warm light falling on the
-   background, and the logo's shadow cast down onto it (.hero__shadow, a live
-   copy of the logo; home.js makes it wobble on the water when a ripple
+/* The logo casts a soft shadow down onto the background (.hero__shadow, a
+   live copy of the logo; home.js makes it wobble on the water when a ripple
    passes). --shadow-drop: how far below the logo it falls. */
-.scene--hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse 34% 75% at 50% -12%, rgba(255, 226, 196, 0.16), rgba(255, 226, 196, 0.06) 55%, transparent 100%),
-    radial-gradient(ellipse 22% 40% at 50% -6%, rgba(255, 236, 212, 0.1), transparent 100%);
-}
 .hero__logo { position: relative; isolation: isolate; --shadow-drop: 9%; }
 .hero__shadow {
   position: absolute;
@@ -472,7 +462,7 @@ ul { padding: 0; list-style: none; }
   opacity: 0.6;
   transform: translateY(var(--shadow-drop)) scale(1.04);
   transform-origin: 50% 0;
-  filter: blur(7px);             /* calm: just soft (home.js switches to the water filter while a ripple passes) */
+  filter: blur(4px);             /* calm: just soft (home.js switches to the water filter while a ripple passes) */
 }
 .hero__shadow.is-wet { filter: url(#shadow-water); }
 

@@ -136,7 +136,7 @@ const scenePieces = windPieces;  // (core.js)
 const heroLogoPieces = logoPieces(heroLogo, { tilt: 60, blur: 8 });
 
 // ---- The logo's shadow on the water ----
-// The stage light casts the logo's shadow on the background (style.css). When
+// The logo casts its shadow on the background (style.css). When
 // a ripple passes under it, the shadow wobbles like a shadow on water: how
 // much follows the waves where the shadow is, swaying back and forth.
 const SHADOW_WATER = {
