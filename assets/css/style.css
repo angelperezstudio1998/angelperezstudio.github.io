@@ -505,6 +505,35 @@ img.floater__img { background: none; }
 /* The logo casts a soft shadow down onto the background (.hero__shadow, a
    live copy of the logo). --shadow-drop: how far below the logo it falls. */
 .hero__logo { position: relative; isolation: isolate; --shadow-drop: 9%; }
+/* The water sliding off as the logo rises out of the water: a bright copy of
+   the logo seen only through a soft band (--wet: where the band is, 0 = above
+   the logo, 1 = below it), which home.js runs down over the letters */
+.hero__wet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  color: #fffaf0;
+  opacity: 0;
+  --wet: 0;
+  -webkit-mask-image: linear-gradient(to bottom, transparent calc(var(--wet) * 160% - 60%), #000 calc(var(--wet) * 160% - 30%), rgba(0, 0, 0, 0.35) calc(var(--wet) * 160% - 12%), transparent calc(var(--wet) * 160%));
+          mask-image: linear-gradient(to bottom, transparent calc(var(--wet) * 160% - 60%), #000 calc(var(--wet) * 160% - 30%), rgba(0, 0, 0, 0.35) calc(var(--wet) * 160% - 12%), transparent calc(var(--wet) * 160%));
+}
+/* The drops of water falling off the letters (home.js makes them; each one
+   that lands makes a ripple) */
+.drip {
+  position: fixed;
+  z-index: 1;
+  width: 7px;
+  height: 9px;
+  margin: -4px 0 0 -3.5px;
+  border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+  background: rgba(240, 230, 212, 0.85);
+  pointer-events: none;
+}
 .hero__shadow {
   position: absolute;
   left: 0;
@@ -1213,6 +1242,7 @@ html.is-locked { overflow: hidden; background: var(--project-color); }
   *, *::before, *::after { transition: none !important; animation: none !important; }
   /* Except the work cards rising, growing and the lines fading near them:
      small motions you start yourself by hovering, and the whole point of the work list */
+  .floaters { transition: opacity 1.2s ease !important; }
   .work-card { transition: var(--sink) !important; }
   .work-list > li.is-active .work-card { transition: var(--rise) !important; }
   .work-card__desc { transition: opacity 0.2s ease !important; }
